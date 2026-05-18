@@ -1,0 +1,39 @@
+{
+  "name": "arkivox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:e2e": "tsx scripts/e2e-vault.ts",
+    "test:e2e:smoke": "tsx scripts/e2e-vault.ts --smoke",
+    "test:e2e:all": "tsx scripts/e2e-vault.ts --all"
+  },
+  "dependencies": {
+    "@arkiv-network/sdk": "^0.6.8",
+    "@iexec-nox/handle": "^0.1.0-beta.9",
+    "@reown/appkit": "1.8.18",
+    "@reown/appkit-adapter-wagmi": "1.8.18",
+    "@tanstack/react-query": "^5.100.13",
+    "next": "^16.1.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "viem": "2.50.4",
+    "wagmi": "2.19.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "^20.19.41",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "dotenv": "^16.6.1",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
+    "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5.9.3"
+  }
+}
