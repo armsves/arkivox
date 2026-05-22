@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>cToken Ledger - My Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #0A0A0B;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .glow-cyber-gold {
+            box-shadow: 0 0 20px 2px rgba(233, 196, 0, 0.15);
+        }
+        .active-scale:active {
+            transform: scale(0.95);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for high-density tech feel */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0c150f;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b4b3e;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#141e17",
+                      "primary-container": "#00ff94",
+                      "on-background": "#dae5da",
+                      "surface-container-highest": "#2d372f",
+                      "on-error-container": "#ffdad6",
+                      "secondary-fixed-dim": "#e9c400",
+                      "outline-variant": "#3b4b3e",
+                      "secondary-fixed": "#ffe16d",
+                      "inverse-on-surface": "#29332b",
+                      "on-tertiary-fixed": "#231b00",
+                      "on-primary-container": "#00713f",
+                      "on-error": "#690005",
+                      "primary-fixed-dim": "#00e383",
+                      "inverse-surface": "#dae5da",
+                      "surface": "#0c150f",
+                      "on-secondary-fixed-variant": "#544600",
+                      "on-secondary-fixed": "#221b00",
+                      "on-tertiary-container": "#775f00",
+                      "surface-bright": "#323c33",
+                      "on-tertiary": "#3c2f00",
+                      "on-surface-variant": "#b9cbbb",
+                      "surface-container-high": "#232c25",
+                      "surface-tint": "#00e383",
+                      "on-secondary-container": "#725f00",
+                      "tertiary-fixed-dim": "#e5c45b",
+                      "on-primary": "#00391d",
+                      "surface-container": "#18221a",
+                      "tertiary-container": "#ffdc71",
+                      "primary-fixed": "#5bffa1",
+                      "on-primary-fixed": "#00210e",
+                      "primary": "#f2fff1",
+                      "on-tertiary-fixed-variant": "#574500",
+                      "secondary-container": "#ffdb3c",
+                      "error": "#ffb4ab",
+                      "surface-dim": "#0c150f",
+                      "surface-variant": "#2d372f",
+                      "surface-container-lowest": "#07100a",
+                      "on-secondary": "#3a3000",
+                      "on-primary-fixed-variant": "#00522c",
+                      "secondary": "#fff9ef",
+                      "error-container": "#93000a",
+                      "tertiary-fixed": "#ffe085",
+                      "inverse-primary": "#006d3c",
+                      "background": "#0c150f",
+                      "tertiary": "#fffbf9",
+                      "on-surface": "#dae5da",
+                      "outline": "#849586"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0px",
+                      "lg": "0px",
+                      "xl": "0px",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "32px",
+                      "margin-mobile": "16px",
+                      "max-width": "1280px",
+                      "base": "8px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "label-sm": ["JetBrains Mono"],
+                      "headline-xl-mobile": ["JetBrains Mono"],
+                      "headline-lg": ["JetBrains Mono"],
+                      "body-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["JetBrains Mono"],
+                      "label-md": ["JetBrains Mono"],
+                      "headline-xl": ["JetBrains Mono"]
+              },
+              "fontSize": {
+                      "label-sm": ["10px", {"lineHeight": "1.2", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                      "headline-xl-mobile": ["32px", {"lineHeight": "1.1", "fontWeight": "700"}],
+                      "headline-lg": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "body-lg": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "headline-md": ["18px", {"lineHeight": "1.2", "letterSpacing": "0em", "fontWeight": "600"}],
+                      "label-md": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "headline-xl": ["40px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col min-h-screen text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-surface flex justify-between items-center px-margin-mobile h-16 border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-container" data-icon="account_balance_wallet">account_balance_wallet</span>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">cToken Ledger</h1>
+</div>
+<div class="flex items-center">
+<span class="px-2 py-1 bg-surface-container-highest border border-primary-container text-primary-container font-label-sm text-label-sm">
+                Braga (Arkiv)
+            </span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-24 pb-24 px-margin-mobile">
+<div class="mb-6">
+<h2 class="font-headline-lg text-headline-lg text-primary-container mb-2">My Ledger</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Cryptographically secured transaction records.</p>
+</div>
+<!-- Ledger Cards List -->
+<div class="flex flex-col gap-4">
+<!-- Card 1: Transfer (Encrypted) -->
+<div class="bg-[#161618] border border-outline-variant p-4 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-headline-md text-headline-md text-on-surface">Transfer</span>
+<span class="px-2 py-0.5 border border-outline text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="lock" style="font-variation-settings: 'FILL' 0;">lock</span>
+                                Encrypted
+                            </span>
+</div>
+<div class="font-label-md text-label-md text-on-surface-variant">TOKEN: <span class="text-on-surface">cUSDC</span></div>
+</div>
+<div class="text-right">
+<div class="font-label-sm text-label-sm text-on-surface-variant">TXID_HASH</div>
+<div class="font-label-md text-label-md text-on-surface">0x71...F4A2</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 border-t border-outline-variant pt-4">
+<button class="w-full py-2 bg-transparent border border-primary-container text-primary-container font-label-md text-label-md active-scale transition-all hover:bg-primary-container/10">
+                        Reveal
+                    </button>
+<button class="w-full py-2 bg-transparent border border-outline text-on-surface font-label-md text-label-md active-scale transition-all hover:bg-surface-variant">
+                        Share
+                    </button>
+</div>
+</div>
+<!-- Card 2: Wrap (Decrypted) -->
+<div class="bg-[#161618] border border-secondary-fixed-dim glow-cyber-gold p-4 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-headline-md text-headline-md text-on-surface">Wrap</span>
+<span class="px-2 py-0.5 border border-secondary-fixed-dim text-secondary-fixed-dim font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="lock_open" style="font-variation-settings: 'FILL' 0;">lock_open</span>
+                                Decrypted
+                            </span>
+</div>
+<div class="font-label-md text-label-md text-on-surface-variant">TOKEN: <span class="text-on-surface">cRLC</span></div>
+</div>
+<div class="text-right">
+<div class="font-headline-md text-headline-md text-secondary-fixed-dim">500.00</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Amount</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-3 border-l-2 border-secondary-fixed-dim">
+<div class="font-label-sm text-label-sm text-secondary-fixed-dim mb-1 uppercase">Memo</div>
+<div class="font-body-md text-body-md text-on-surface italic">"Seed Investment"</div>
+</div>
+<div class="border-t border-outline-variant pt-4">
+<button class="w-full py-2 bg-transparent border border-error text-error font-label-md text-label-md active-scale transition-all hover:bg-error/10">
+                        Revoke Access
+                    </button>
+</div>
+</div>
+<!-- Decorative Dashboard Stats (Extra for UI richness) -->
+<div class="grid grid-cols-2 gap-4 mt-4">
+<div class="bg-[#161618] border border-outline-variant p-4">
+<div class="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase">Uptime</div>
+<div class="font-headline-md text-headline-md text-primary-container">99.998%</div>
+</div>
+<div class="bg-[#161618] border border-outline-variant p-4">
+<div class="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase">Block Latency</div>
+<div class="font-headline-md text-headline-md text-primary-container">12ms</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 bg-surface-container pb-safe border-t border-outline-variant">
+<!-- My Ledger (Active) -->
+<a class="flex flex-col items-center justify-center text-primary-container font-bold group transition-all" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110" data-icon="dashboard" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-sm text-label-sm">My Ledger</span>
+</a>
+<!-- Record -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant group hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110" data-icon="add_box">add_box</span>
+<span class="font-label-sm text-label-sm">Record</span>
+</a>
+<!-- Disclosures -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant group hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110" data-icon="share_reviews">share_reviews</span>
+<span class="font-label-sm text-label-sm">Disclosures</span>
+</a>
+</nav>
+<!-- Micro-interaction overlay for hardware feel -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.02] mix-blend-overlay overflow-hidden z-[100]">
+<div class="absolute inset-0 bg-repeat bg-[length:200px_200px]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDE0Nm85GKBU8mDvn0yJ4sLW_OIQmqF0ACs2zkc40q1m7Avj0yVDUKTv7wrjN7MkJIwRxEMnCW5aP9tCATYb-tHGK3Xkw3SthVgp_YbbvEvHQ1R7OPRZajpRtrS5gahqxkFtve_9oUF7sKM9Fkbb9IVIhqqIAqhyKxc1YuHQuD7CGjMmgm1vzmsF3ltvIdFLXcFav7Ej3-PNum8kswWOKvS4b56Xtt0nHfUThXxbJZ7X8XgKMYSzE06W05ZdjrWfMX1D_a3IFNP0448')"></div>
+</div>
+<script>
+        // Simple scale effect on tap for tactile feedback
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('touchstart', () => {
+                el.style.transform = 'scale(0.96)';
+            });
+            el.addEventListener('touchend', () => {
+                el.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Record Transaction - cToken Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#141e17",
+                        "primary-container": "#00ff94",
+                        "on-background": "#dae5da",
+                        "surface-container-highest": "#2d372f",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#e9c400",
+                        "outline-variant": "#3b4b3e",
+                        "secondary-fixed": "#ffe16d",
+                        "inverse-on-surface": "#29332b",
+                        "on-tertiary-fixed": "#231b00",
+                        "on-primary-container": "#00713f",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#00e383",
+                        "inverse-surface": "#dae5da",
+                        "surface": "#0c150f",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-secondary-fixed": "#221b00",
+                        "on-tertiary-container": "#775f00",
+                        "surface-bright": "#323c33",
+                        "on-tertiary": "#3c2f00",
+                        "on-surface-variant": "#b9cbbb",
+                        "surface-container-high": "#232c25",
+                        "surface-tint": "#00e383",
+                        "on-secondary-container": "#725f00",
+                        "tertiary-fixed-dim": "#e5c45b",
+                        "on-primary": "#00391d",
+                        "surface-container": "#18221a",
+                        "tertiary-container": "#ffdc71",
+                        "primary-fixed": "#5bffa1",
+                        "on-primary-fixed": "#00210e",
+                        "primary": "#f2fff1",
+                        "on-tertiary-fixed-variant": "#574500",
+                        "secondary-container": "#ffdb3c",
+                        "error": "#ffb4ab",
+                        "surface-dim": "#0c150f",
+                        "surface-variant": "#2d372f",
+                        "surface-container-lowest": "#07100a",
+                        "on-secondary": "#3a3000",
+                        "on-primary-fixed-variant": "#00522c",
+                        "secondary": "#fff9ef",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffe085",
+                        "inverse-primary": "#006d3c",
+                        "background": "#0c150f",
+                        "tertiary": "#fffbf9",
+                        "on-surface": "#dae5da",
+                        "outline": "#849586"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "32px",
+                        "margin-mobile": "16px",
+                        "max-width": "1280px",
+                        "base": "8px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-xl-mobile": ["JetBrains Mono"],
+                        "headline-lg": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["JetBrains Mono"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-xl": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", {"lineHeight": "1.2", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "1.1", "fontWeight": "700"}],
+                        "headline-lg": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-md": ["18px", {"lineHeight": "1.2", "letterSpacing": "0em", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-xl": ["40px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0c150f;
+            color: #dae5da;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glow-primary {
+            box-shadow: 0 0 15px rgba(0, 255, 148, 0.15);
+        }
+        .nox-border {
+            border-color: #e9c400;
+        }
+        .nox-text {
+            color: #e9c400;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #00ff94 !important;
+            box-shadow: 0 0 0 1px rgba(0, 255, 148, 0.2);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant h-16 flex justify-between items-center px-margin-mobile">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Record</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="px-2 py-0.5 border nox-border nox-text font-label-sm text-label-sm uppercase tracking-widest rounded-sm">
+                Arb Sepolia (Nox)
+            </div>
+<span class="font-label-md text-label-md text-primary-container hover:bg-surface-container-highest transition-colors px-2 py-1 cursor-pointer">Braga</span>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="flex-grow pt-20 pb-28 px-margin-mobile">
+<div class="max-w-md mx-auto space-y-6">
+<!-- Terminal Header Decoration -->
+<div class="flex items-center gap-2 opacity-50">
+<div class="h-1 w-1 bg-primary-container"></div>
+<span class="font-label-sm text-label-sm uppercase tracking-tighter">New Cryptographic Entry</span>
+<div class="h-[1px] flex-grow bg-outline-variant"></div>
+</div>
+<!-- Transaction Form Card -->
+<div class="bg-surface-container border border-outline-variant p-5 space-y-5 rounded-sm">
+<!-- Transaction Type -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant block">TRANSACTION_TYPE</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-label-md text-label-md p-3 rounded-none appearance-none cursor-pointer">
+<option>Transfer</option>
+<option>Wrap</option>
+<option>Unwrap</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">expand_more</span>
+</div>
+</div>
+<!-- Token Selection -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant block">ASSET_IDENTIFIER</label>
+<div class="grid grid-cols-2 gap-2">
+<button class="border border-primary-container bg-primary-container/10 text-primary-container font-label-md text-label-md py-3 transition-all">cUSDC</button>
+<button class="border border-outline-variant text-on-surface-variant font-label-md text-label-md py-3 hover:border-on-surface-variant transition-all">cRLC</button>
+</div>
+</div>
+<!-- Counterparty Address -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant block">COUNTERPARTY_ADDRESS</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-label-sm text-label-sm p-3 rounded-none placeholder:opacity-30" placeholder="0x..." type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">qr_code_scanner</span>
+</div>
+</div>
+<!-- Amount -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant block">AMOUNT_VALUE</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-label-sm text-label-sm p-3 rounded-none placeholder:opacity-30" placeholder="0.00" type="number"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 font-label-sm text-label-sm text-on-surface-variant">cUSDC</span>
+</div>
+</div>
+<!-- Nox Handle Toggle -->
+<div class="pt-2">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center">
+<input class="peer hidden" id="handleToggle" onchange="toggleHandleField()" type="checkbox"/>
+<div class="w-5 h-5 border border-outline-variant bg-surface-container-lowest peer-checked:bg-secondary-container peer-checked:border-secondary-container transition-all"></div>
+<span class="material-symbols-outlined absolute text-[16px] text-on-secondary-container opacity-0 peer-checked:opacity-100 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-bold">check</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-on-surface">Paste existing Nox handle</span>
+</label>
+</div>
+<!-- Amount Handle (Hidden by default) -->
+<div class="space-y-1.5 hidden animate-in fade-in slide-in-from-top-1 duration-200" id="handleField">
+<label class="font-label-md text-label-md nox-text block uppercase">Nox_Amount_Handle</label>
+<input class="w-full bg-surface-container-lowest border nox-border nox-text font-label-sm text-label-sm p-3 rounded-none placeholder:opacity-30" placeholder="nox_val_..." type="text"/>
+</div>
+<!-- Memo -->
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant block">METADATA_MEMO</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-label-sm text-label-sm p-3 rounded-none resize-none placeholder:opacity-30" placeholder="Private internal note..." rows="2"></textarea>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-primary-container text-on-primary-container font-label-md text-label-md font-bold py-4 active:scale-95 duration-100 glow-primary transition-all uppercase tracking-widest mt-2">
+                    Record &amp; Encrypt
+                </button>
+</div>
+<!-- Warning Information -->
+<div class="p-4 border border-outline-variant bg-surface-container-low flex gap-3">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-lg">security</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant leading-relaxed">
+                    Encryption will be finalized on-chain. Counterparty will require the shared secret or Nox handle to decrypt specific amount metadata.
+                </p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 bg-surface-container pb-safe border-t border-outline-variant">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:opacity-80 active:scale-90" href="#">
+<span class="material-symbols-outlined mb-1">dashboard</span>
+<span class="font-label-sm text-label-sm">My Ledger</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container font-bold transition-all active:opacity-80 active:scale-90" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">add_box</span>
+<span class="font-label-sm text-label-sm">Record</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:opacity-80 active:scale-90" href="#">
+<span class="material-symbols-outlined mb-1">share_reviews</span>
+<span class="font-label-sm text-label-sm">Disclosures</span>
+</a>
+</nav>
+<script>
+        function toggleHandleField() {
+            const checkbox = document.getElementById('handleToggle');
+            const field = document.getElementById('handleField');
+            if (checkbox.checked) {
+                field.classList.remove('hidden');
+            } else {
+                field.classList.add('hidden');
+            }
+        }
+    </script>
+</body></html>

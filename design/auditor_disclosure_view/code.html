@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>cToken Ledger | Auditor View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .cyber-glow-gold {
+            box-shadow: 0 0 15px 2px rgba(233, 196, 0, 0.15);
+        }
+        .cyber-glow-green {
+            box-shadow: 0 0 15px 2px rgba(0, 255, 148, 0.15);
+        }
+        body {
+            background-color: #0c150f;
+            color: #dae5da;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#141e17",
+                        "primary-container": "#00ff94",
+                        "on-background": "#dae5da",
+                        "surface-container-highest": "#2d372f",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#e9c400",
+                        "outline-variant": "#3b4b3e",
+                        "secondary-fixed": "#ffe16d",
+                        "inverse-on-surface": "#29332b",
+                        "on-tertiary-fixed": "#231b00",
+                        "on-primary-container": "#00713f",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#00e383",
+                        "inverse-surface": "#dae5da",
+                        "surface": "#0c150f",
+                        "on-secondary-fixed-variant": "#544600",
+                        "on-secondary-fixed": "#221b00",
+                        "on-tertiary-container": "#775f00",
+                        "surface-bright": "#323c33",
+                        "on-surface-variant": "#b9cbbb",
+                        "surface-container-high": "#232c25",
+                        "surface-tint": "#00e383",
+                        "on-secondary-container": "#725f00",
+                        "tertiary-fixed-dim": "#e5c45b",
+                        "on-primary": "#00391d",
+                        "surface-container": "#18221a",
+                        "tertiary-container": "#ffdc71",
+                        "primary-fixed": "#5bffa1",
+                        "on-primary-fixed": "#00210e",
+                        "primary": "#f2fff1",
+                        "on-tertiary-fixed-variant": "#574500",
+                        "secondary-container": "#ffdb3c",
+                        "error": "#ffb4ab",
+                        "surface-dim": "#0c150f",
+                        "surface-variant": "#2d372f",
+                        "surface-container-lowest": "#07100a",
+                        "on-secondary": "#3a3000",
+                        "on-primary-fixed-variant": "#00522c",
+                        "secondary": "#fff9ef",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffe085",
+                        "inverse-primary": "#006d3c",
+                        "background": "#0c150f",
+                        "tertiary": "#fffbf9",
+                        "on-surface": "#dae5da",
+                        "outline": "#849586"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-xl-mobile": ["JetBrains Mono"],
+                        "headline-lg": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["JetBrains Mono"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-xl": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", {"lineHeight": "1.2", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "1.1", "fontWeight": "700"}],
+                        "headline-lg": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["18px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-xl": ["40px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background min-h-screen flex flex-col font-body-md text-body-md">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 flex justify-between items-center px-4 h-16 w-full bg-surface border-b border-outline-variant z-50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-container" data-icon="account_balance_wallet">account_balance_wallet</span>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">cToken Ledger</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary-container font-bold uppercase tracking-widest">Auditor View</span>
+</div>
+</header>
+<main class="flex-grow pt-4 pb-20 px-4 space-y-6">
+<!-- Hero Section: Disclosure Grant -->
+<section class="relative overflow-hidden bg-surface-container border border-outline-variant rounded-lg p-6">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="security">security</span>
+</div>
+<div class="relative z-10 space-y-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse shadow-[0_0_8px_rgba(0,255,148,0.6)]"></span>
+<span class="font-label-sm text-label-sm text-primary-container uppercase tracking-tighter">Active Disclosure Session</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase mb-1">Disclosure Grant from:</p>
+<h2 class="font-headline-lg text-headline-lg text-on-surface break-all">0xAlice...8f2a</h2>
+</div>
+<div class="pt-2">
+<div class="inline-flex items-center px-3 py-1 bg-surface-container-highest border border-secondary-fixed-dim rounded-sm cyber-glow-gold">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-[16px] mr-2" data-icon="verified_user" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-label-sm text-label-sm text-secondary-fixed-dim uppercase">Validated by iExec Nox TEE</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Transaction Details -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Shared Evidence</h3>
+<span class="font-label-sm text-label-sm text-outline">TXID: 8829...441C</span>
+</div>
+<div class="bg-surface-container-low border border-outline-variant divide-y divide-outline-variant">
+<!-- Data Row -->
+<div class="p-4 flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-outline uppercase">Action Type</span>
+<div class="flex items-center justify-between">
+<span class="font-headline-md text-headline-md text-on-surface">Transfer</span>
+<span class="font-label-md text-label-md bg-surface-variant px-2 py-1 text-on-surface-variant">L2_ZK_SYNC</span>
+</div>
+</div>
+<!-- Data Row -->
+<div class="p-4 flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-outline uppercase">Asset &amp; Volume</span>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-xl-mobile text-headline-xl-mobile text-primary-container">1,200.00</span>
+<span class="font-headline-md text-headline-md text-on-surface">cUSDC</span>
+</div>
+</div>
+<!-- Data Row -->
+<div class="p-4 flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-outline uppercase">Proof Hash</span>
+<p class="font-label-md text-label-md text-on-surface-variant font-mono break-all leading-relaxed">
+                        0x7f83b123...d234e567890abcdef1234567890abcdef12345678
+                    </p>
+</div>
+</div>
+</section>
+<!-- Proof of Identity / Constraints -->
+<section class="grid grid-cols-2 gap-4">
+<div class="p-4 bg-surface-container border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant mb-2" data-icon="timer">timer</span>
+<p class="font-label-sm text-label-sm text-outline uppercase">Expires In</p>
+<p class="font-headline-md text-headline-md text-on-surface">04:12:09</p>
+</div>
+<div class="p-4 bg-surface-container border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant mb-2" data-icon="visibility_off">visibility_off</span>
+<p class="font-label-sm text-label-sm text-outline uppercase">Obfuscation</p>
+<p class="font-headline-md text-headline-md text-on-surface">94.2%</p>
+</div>
+</section>
+<!-- Technical Metadata -->
+<section class="bg-surface-container-lowest border border-outline-variant p-4 space-y-4">
+<h4 class="font-label-md text-label-md text-on-surface font-bold border-b border-outline-variant pb-2">SESSION METADATA</h4>
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant font-label-sm text-label-sm">ATTESTATION TYPE</span>
+<span class="text-on-surface font-mono text-[11px]">EPID_OCALL_LINK</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant font-label-sm text-label-sm">HARDWARE_ID</span>
+<span class="text-on-surface font-mono text-[11px]">SGX_V2_PROV</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant font-label-sm text-label-sm">SECURITY_STATE</span>
+<span class="text-primary-container font-mono text-[11px]">ENCLAVE_LOCKED</span>
+</div>
+</div>
+</section>
+<!-- Atmospheric Image -->
+<div class="rounded-lg overflow-hidden h-40 border border-outline-variant relative">
+<img alt="Infrastructure detail" class="w-full h-full object-cover grayscale opacity-40" data-alt="A macro close-up of a high-performance server rack in a dark data center, with narrow glowing neon green and amber light strips reflecting off polished obsidian-like surfaces. The atmosphere is quiet, cold, and highly secure, emphasizing cryptographic precision and institutional-grade hardware infrastructure for managing digital ledger disclosures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqu8X22Bj2ZhpKRpnoqyERXTo8fqICP7JBI9z4-Js57UPoHOxsltclb4FdnBvLXv_x53980puxFTpsgos-GejYlTYDzSwOzYg6FD9qNQ-AHCw4qKjMFi1q8rgUvwDETCF9YeRyMCXpCSewCLzSkIvwLD7tS_pn-R8pOkGQhbcf5IBEeOJ6NRZtSYIzs-Bc9J8iuUINymQ-Ra1-PpDWbZFVj_dsOe5__J43EjZj4argdPNi38_HAhmQvbEzfGy19Eeg8aZBg4EChgBh"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+<div class="absolute bottom-4 left-4">
+<p class="font-label-sm text-label-sm text-on-primary-container bg-primary-container/20 px-2 py-1 backdrop-blur-md border border-primary-container/30">AUDIT_LOG_STREAM_CONNECTED</p>
+</div>
+</div>
+<!-- Action Button -->
+<div class="pt-4 space-y-3">
+<button class="w-full py-4 bg-primary-container text-on-primary font-bold font-headline-md uppercase active:scale-95 transition-transform duration-100 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="download">download</span>
+                Export Signed Report
+            </button>
+<button class="w-full py-4 border border-error text-error font-bold font-headline-md uppercase active:scale-95 transition-transform duration-100 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="block">block</span>
+                Report Disclosure Violation
+            </button>
+</div>
+</main>
+<!-- Footer Status (Non-Nav) -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container h-8 flex items-center justify-center border-t border-outline-variant z-50">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Nox-TEE Connection Stable</span>
+</div>
+</div>
+<script>
+        // Micro-interaction for expiring timer
+        let timeLeft = 15129; // 04:12:09 in seconds
+        const timerDisplay = document.querySelector('section.grid > div:first-child p.text-headline-md');
+        
+        function updateTimer() {
+            const h = Math.floor(timeLeft / 3600).toString().padStart(2, '0');
+            const m = Math.floor((timeLeft % 3600) / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            if (timerDisplay) {
+                timerDisplay.textContent = `${h}:${m}:${s}`;
+            }
+            if (timeLeft > 0) timeLeft--;
+        }
+
+        setInterval(updateTimer, 1000);
+    </script>
+</body></html>
