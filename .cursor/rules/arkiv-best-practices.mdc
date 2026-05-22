@@ -1,0 +1,27 @@
+---
+description: Follow Arkiv best practices when editing ledger, queries, or Braga integration
+globs: lib/arkiv*.ts,lib/ledger*.ts,lib/arkiv-client.ts,scripts/e2e/**/*.ts,scripts/e2e-vault.ts,scripts/show-onchain.ts
+alwaysApply: false
+---
+
+# Arkiv best practices (Arkivox)
+
+Before changing Arkiv-related code, read:
+
+1. **`docs/agent-skill.md`** — project checklist and file map
+2. **`.agents/skills/arkiv-best-practices/SKILL.md`** — full Arkiv patterns
+
+## Non-negotiables
+
+- Include **`PROJECT_ATTRIBUTE`** on every `createEntity` / `updateEntity`
+- Filter queries with **`projectScopePredicate()`** plus **`entityType`**
+- Use **`ExpirationTime`** / **`ENTITY_EXPIRES_IN`**, never magic second counts
+- Reads via **`arkivPublicClient`** only; writes via wallet client
+- Skip entities that fail **`isProjectScopedEntity()`**
+
+## Arkivox model
+
+- Users create entities from their wallet → use **`.ownedBy()`**, not `.createdBy()`
+- Wrap/unwrap: public plaintext payloads; **transfer**: v3 encrypted + Nox
+
+Do not add Kaolin references or duplicate public clients.
