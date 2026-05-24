@@ -24,6 +24,7 @@ import { NOX_COMPUTE_ADDRESS } from "@/lib/nox";
 import type { ArkivWalletClient } from "@/lib/ledger-operations";
 import type { DecryptedSecretNote, SecretNoteView } from "@/lib/types";
 import { fetchSecretNoteByKey } from "@/lib/secret-note-queries";
+import { createEntityResilient } from "@/lib/arkiv-create-entity";
 import { formatArkivError } from "@/lib/arkiv-errors";
 
 export type ShareSecretNoteResult = {
@@ -123,7 +124,7 @@ export async function publishSecretNote(
 
   let entityKey: string;
   try {
-    ({ entityKey } = await ownerArkiv.createEntity({
+    ({ entityKey } = await createEntityResilient(ownerArkiv, {
       payload: jsonToPayload(prepared.outerPayload),
       contentType: "application/json",
       attributes: [
@@ -313,7 +314,7 @@ export async function publishShareSecretNote(
   ownerArkiv: ArkivWalletClient,
   prepared: PreparedSecretNoteShare,
 ): Promise<ShareSecretNoteResult> {
-  const { entityKey } = await ownerArkiv.createEntity({
+  const { entityKey } = await createEntityResilient(ownerArkiv, {
     payload: jsonToPayload(prepared.entityPayload),
     contentType: "application/json",
     attributes: [PROJECT_ATTRIBUTE, ...prepared.entityAttributes],

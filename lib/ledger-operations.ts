@@ -28,6 +28,7 @@ import {
   isConfidentialTxType,
   type TxType,
 } from "@/lib/arkiv";
+import { createEntityResilient } from "@/lib/arkiv-create-entity";
 import { formatAmountForToken, parseAmountForToken } from "@/lib/amount";
 import { PUBLIC_TX_AMOUNT_HANDLE } from "@/lib/ctoken-contracts";
 import {
@@ -224,7 +225,7 @@ export async function publishConfidentialTransaction(
   const { plaintext, outerPayload, sessionDek } = prepared;
   const contentHash = await sha256Hex(JSON.stringify(outerPayload));
 
-  const { entityKey } = await ownerArkiv.createEntity({
+  const { entityKey } = await createEntityResilient(ownerArkiv, {
     payload: jsonToPayload(outerPayload),
     contentType: "application/json",
     attributes: [
@@ -291,7 +292,7 @@ export async function recordTokenTransaction(
     };
     const contentHash = await sha256Hex(JSON.stringify(outerPayload));
 
-    const { entityKey } = await ownerArkiv.createEntity({
+    const { entityKey } = await createEntityResilient(ownerArkiv, {
       payload: jsonToPayload(outerPayload),
       contentType: "application/json",
       attributes: [
@@ -511,7 +512,7 @@ export async function createAuditorDisclosure(
 
   const disclosureHandle = dekHandle as `0x${string}`;
 
-  const { entityKey } = await ownerArkiv.createEntity({
+  const { entityKey } = await createEntityResilient(ownerArkiv, {
     payload: jsonToPayload({
       v: 3,
       amountHandle: disclosureHandle,
@@ -628,7 +629,7 @@ export async function createAuditorRevocation(
   shareHandle: `0x${string}`,
   parentKey: string,
 ): Promise<void> {
-  await ownerArkiv.createEntity({
+  await createEntityResilient(ownerArkiv, {
     payload: jsonToPayload({
       v: 1,
       shareHandle: shareHandle.toLowerCase(),

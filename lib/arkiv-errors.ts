@@ -40,6 +40,13 @@ export function formatArkivError(error: unknown): string {
   if (/rejected|denied|cancelled/i.test(combined)) {
     return "Transaction rejected in wallet.";
   }
+  if (/replacement transaction underpriced|underpriced/i.test(combined)) {
+    return (
+      "A previous Arkiv Braga transaction is still pending in your wallet. " +
+      "Open your wallet → Activity → cancel or speed up the stuck Braga tx, wait a minute, then retry. " +
+      "The app also retries once with higher gas automatically."
+    );
+  }
   if (combined) return combined;
   return "Arkiv publish failed. Ensure your wallet is on Arkiv Braga, has GLM from the faucet, and you approve the transaction.";
 }

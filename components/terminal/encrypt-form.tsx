@@ -35,6 +35,10 @@ export function EncryptForm({
         <ol className="mt-3 list-decimal space-y-1 pl-5 font-label-sm text-on-surface-variant normal-case">
           <li>Stay on Arbitrum Sepolia while the app runs Nox encrypt (usually no wallet popup).</li>
           <li>Approve the Arkiv Braga transaction when prompted (this step stores the note).</li>
+          <li>
+            If you see “replacement underpriced”, open your wallet Activity and cancel any
+            stuck Arkiv Braga transaction, then retry.
+          </li>
         </ol>
       </div>
 
