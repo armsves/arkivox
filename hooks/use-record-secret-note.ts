@@ -15,6 +15,8 @@ import {
   publishSecretNote,
 } from "@/lib/secret-note-operations";
 import { setSessionDek } from "@/lib/session-dek-store";
+import { formatArkivError } from "@/lib/arkiv-errors";
+import { assertBragaFunded } from "@/lib/braga-preflight";
 
 export type EncryptStep = "idle" | "nox" | "arkiv" | "done" | "error";
 
@@ -40,7 +42,9 @@ export function useRecordSecretNote() {
         setStep("arkiv");
         await switchChainAsync({ chainId: bragaChain.id });
         const ownerArkiv = await getArkivWalletClientForBraga();
-        if (!ownerArkiv) throw new Error("Connect wallet on Arkiv Braga");
+        const owner = ownerArkiv.account?.address;
+        if (!owner) throw new Error("Connect wallet on Arkiv Braga");
+        await assertBragaFunded(owner);
 
         const { entityKey, sessionDek } = await publishSecretNote(
           ownerArkiv,
@@ -51,7 +55,7 @@ export function useRecordSecretNote() {
         return entityKey;
       } catch (e) {
         setStep("error");
-        setError(e instanceof Error ? e.message : String(e));
+        setError(formatArkivError(e));
         return null;
       }
     },

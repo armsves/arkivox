@@ -19,6 +19,8 @@ import {
   type RecordTransactionInput,
 } from "@/lib/ledger-operations";
 import { setSessionDek } from "@/lib/session-dek-store";
+import { formatArkivError } from "@/lib/arkiv-errors";
+import { assertBragaFunded } from "@/lib/braga-preflight";
 
 export type RecordStep = "idle" | "nox" | "arkiv" | "done" | "error";
 
@@ -70,7 +72,9 @@ export function useRecordTransaction() {
         setStep("arkiv");
         await switchChainAsync({ chainId: bragaChain.id });
         const arkivWallet = await getArkivWalletClientForBraga();
-        if (!arkivWallet) throw new Error("Connect wallet on Arkiv Braga");
+        const owner = arkivWallet.account?.address;
+        if (!owner) throw new Error("Connect wallet on Arkiv Braga");
+        await assertBragaFunded(owner);
 
         let entityKey: string;
         let sessionDek: Uint8Array | undefined;
@@ -91,7 +95,7 @@ export function useRecordTransaction() {
         return entityKey;
       } catch (e) {
         setStep("error");
-        setError(e instanceof Error ? e.message : String(e));
+        setError(formatArkivError(e));
         return null;
       }
     },

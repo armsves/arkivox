@@ -28,9 +28,14 @@ export function EncryptForm({
       <div>
         <h2 className="font-headline-lg text-primary-container">Encrypt &amp; share</h2>
         <p className="mt-2 font-body-md text-on-surface-variant">
-          Store arbitrary text on Arkiv with AES-256-GCM. The DEK is wrapped via iExec Nox on
-          Arbitrum Sepolia. Share read access with any wallet like confidential transfers.
+          Your text is encrypted in the browser, the key is wrapped via Nox on Arbitrum Sepolia
+          (no gas), then you sign one Arkiv Braga transaction to publish. You need testnet GLM on
+          Braga — use the Faucets link below if publish fails.
         </p>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 font-label-sm text-on-surface-variant normal-case">
+          <li>Stay on Arbitrum Sepolia while the app runs Nox encrypt (usually no wallet popup).</li>
+          <li>Approve the Arkiv Braga transaction when prompted (this step stores the note).</li>
+        </ol>
       </div>
 
       <div className="space-y-4 border border-outline-variant bg-surface-container-low p-4">

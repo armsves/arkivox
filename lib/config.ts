@@ -4,6 +4,7 @@ export const CONFIG = {
   },
   rpc: {
     arbitrumSepolia: "https://arbitrum-sepolia.gateway.tenderly.co",
+    braga: "https://braga.hoodi.arkiv.network/rpc",
   },
 } as const;
 

@@ -23,12 +23,14 @@ export async function getArkivWalletClientForBraga() {
   const walletClient = await getWalletClient(wagmiConfig, {
     chainId: bragaChain.id,
   });
-  if (!walletClient?.account?.address) {
-    throw new Error("Wallet not connected on Arkiv Braga testnet.");
+  if (!walletClient?.account) {
+    throw new Error(
+      "Wallet not connected on Arkiv Braga. Switch to Arkiv Braga testnet in your wallet, then retry.",
+    );
   }
   return createArkivWalletClient({
     chain: braga,
     transport: custom(walletClient.transport),
-    account: walletClient.account.address,
+    account: walletClient.account,
   });
 }

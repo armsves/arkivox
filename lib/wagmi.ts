@@ -15,7 +15,7 @@ export const wagmiAdapter = new WagmiAdapter({
   networks,
   transports: {
     [arbitrumSepolia.id]: http(CONFIG.rpc.arbitrumSepolia),
-    [bragaChain.id]: http(),
+    [bragaChain.id]: http(CONFIG.rpc.braga),
   },
 });
 
