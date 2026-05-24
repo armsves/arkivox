@@ -6,11 +6,7 @@ import { arbitrumSepolia } from "viem/chains";
 import type { DecryptedTransaction, TokenTransactionView } from "@/lib/types";
 import { isConfidentialTxType } from "@/lib/arkiv";
 import { getHandleClientForNox } from "@/lib/wallet-clients";
-import {
-  decryptTransactionSecret,
-  decryptWithSessionDek,
-} from "@/lib/ledger-operations";
-import { getSessionDek } from "@/lib/session-dek-store";
+import { decryptTransactionSecret } from "@/lib/ledger-operations";
 
 export function useDecryptTransaction() {
   const { switchChainAsync } = useSwitchChain();
@@ -25,13 +21,6 @@ export function useDecryptTransaction() {
       setBusyKey(tx.entityKey);
       setError(null);
       try {
-        const sessionDek = getSessionDek(tx.entityKey);
-        if (sessionDek) {
-          const data = await decryptWithSessionDek(tx, sessionDek);
-          setRevealed((prev) => ({ ...prev, [tx.entityKey]: data }));
-          return;
-        }
-
         const isPublic =
           !isConfidentialTxType(tx.txType) ||
           tx.payload.public ||
@@ -45,7 +34,7 @@ export function useDecryptTransaction() {
 
         await switchChainAsync({ chainId: arbitrumSepolia.id });
         const handleClient = await getHandleClientForNox();
-        const data = await decryptTransactionSecret(handleClient, tx, sessionDek);
+        const data = await decryptTransactionSecret(handleClient, tx);
         setRevealed((prev) => ({ ...prev, [tx.entityKey]: data }));
       } catch (e) {
         setError(

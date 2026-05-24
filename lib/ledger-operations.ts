@@ -11,6 +11,7 @@ import { braga } from "@arkiv-network/sdk/chains";
 import { jsonToPayload } from "@arkiv-network/sdk/utils";
 import { createViemHandleClient, type HandleClient } from "@iexec-nox/handle";
 import {
+  createPublicClient,
   createPublicClient as createViemPublicClient,
   createWalletClient as createViemWalletClient,
   http as viemHttp,
@@ -39,7 +40,10 @@ import {
 } from "@/lib/crypto";
 import { arkivEncryptionKeyHandle } from "@/lib/handle-registry";
 import { NOX_COMPUTE_ADDRESS, TEE_COOLDOWN_MS } from "@/lib/nox";
-import { noxApplicationContractForDek } from "@/lib/nox-handle-acl";
+import {
+  noxApplicationContractForDek,
+  registerNoxDekHandleForOwner,
+} from "@/lib/nox-handle-acl";
 import {
   grantNoxViewer,
   isNoxViewer,
@@ -277,8 +281,6 @@ export async function recordTokenTransaction(
 ): Promise<{
   entityKey: string;
   transaction: TokenTransactionView;
-  /** Present when AES+DEK path used — keep in memory for owner reveal (Nox ACL not set for encrypt-only handles). */
-  sessionDek?: Uint8Array;
 }> {
   const ownerAddress = ownerArkiv.account?.address;
   if (!ownerAddress) throw new Error("Arkiv wallet has no account");
@@ -340,24 +342,20 @@ export async function recordTokenTransaction(
     throw new Error("Arbitrum Sepolia wallet required for confidential transfers");
   }
 
-  void nox.viem;
   const prepared = await prepareConfidentialTransaction(nox.handle, input);
-  return publishConfidentialTransaction(ownerArkiv, prepared);
-}
-
-export async function decryptWithSessionDek(
-  tx: TokenTransactionView,
-  sessionDek: Uint8Array,
-): Promise<DecryptedTransaction> {
-  if (!tx.payload.ciphertext || !tx.payload.iv) {
-    throw new Error("No encrypted payload");
-  }
-  const parsed = await decryptJson<TransactionPlaintext>(
-    tx.payload.ciphertext,
-    tx.payload.iv,
-    sessionDek,
+  const dekHandle = arkivEncryptionKeyHandle(prepared.outerPayload);
+  const arbPublic = createPublicClient({
+    chain: arbitrumSepolia,
+    transport: viemHttp(),
+  });
+  await registerNoxDekHandleForOwner(
+    nox.viem,
+    arbPublic,
+    ownerAddress,
+    dekHandle,
+    prepared.dekHandleProof,
   );
-  return plaintextToDecrypted(parsed);
+  return publishConfidentialTransaction(ownerArkiv, prepared);
 }
 
 async function ensureViewer(
@@ -376,7 +374,6 @@ async function ensureViewer(
 export async function decryptTransactionSecret(
   handleClient: HandleClient | null,
   tx: TokenTransactionView,
-  sessionDek?: Uint8Array,
 ): Promise<DecryptedTransaction> {
   if (
     !isConfidentialTxType(tx.txType) ||
@@ -392,8 +389,7 @@ export async function decryptTransactionSecret(
 
   if (tx.payload.v === 3 && tx.payload.ciphertext && tx.payload.iv) {
     const keyHandle = arkivEncryptionKeyHandle(tx.payload);
-    const dek =
-      sessionDek ?? (await unwrapDekFromHandle(handleClient, keyHandle));
+    const dek = await unwrapDekFromHandle(handleClient, keyHandle);
     const parsed = await decryptJson<TransactionPlaintext>(
       tx.payload.ciphertext,
       tx.payload.iv,
@@ -403,8 +399,7 @@ export async function decryptTransactionSecret(
   }
 
   if (tx.payload.ciphertext && tx.payload.iv) {
-    const dek =
-      sessionDek ?? (await unwrapDekFromHandle(handleClient, tx.payload.amountHandle));
+    const dek = await unwrapDekFromHandle(handleClient, tx.payload.amountHandle);
     const parsed = await decryptJson<TransactionPlaintext>(
       tx.payload.ciphertext,
       tx.payload.iv,
@@ -430,7 +425,6 @@ export async function decryptTransactionSecret(
 export async function decryptDisclosureSecret(
   handleClient: HandleClient,
   disclosure: AuditorDisclosureView,
-  sessionDek?: Uint8Array,
 ): Promise<DecryptedDisclosure> {
   if (!disclosure.isPrivate) {
     return {
@@ -449,9 +443,10 @@ export async function decryptDisclosureSecret(
     throw new Error("No encrypted disclosure payload");
   }
 
-  const dek =
-    sessionDek ??
-    (await unwrapDekFromHandle(handleClient, disclosure.payload.amountHandle));
+  const dek = await unwrapDekFromHandle(
+    handleClient,
+    disclosure.payload.amountHandle,
+  );
 
   const parsed = await decryptJson<DisclosurePlaintext>(
     disclosure.payload.ciphertext,
@@ -555,8 +550,6 @@ export async function shareTransactionWithAuditor(
   auditor: `0x${string}`,
   options?: {
     auditorLabel?: string;
-    /** Required for DEK-wrapped txs — re-encrypts amount for Nox sharing */
-    sessionDek?: Uint8Array;
     amount?: string;
   },
 ): Promise<ShareWithAuditorResult> {
@@ -569,13 +562,15 @@ export async function shareTransactionWithAuditor(
   let shareHandle = tx.payload.amountHandle;
   let txPlain: TransactionPlaintext | undefined;
 
-  if (options?.sessionDek && tx.payload.ciphertext && tx.payload.iv) {
+  if (tx.payload.ciphertext && tx.payload.iv) {
+    const keyHandle = arkivEncryptionKeyHandle(tx.payload);
+    const dek = await unwrapDekFromHandle(ownerHandle, keyHandle);
     txPlain = await decryptJson<TransactionPlaintext>(
       tx.payload.ciphertext,
       tx.payload.iv,
-      options.sessionDek,
+      dek,
     );
-    const amount = options.amount ?? txPlain.amount;
+    const amount = options?.amount ?? txPlain.amount;
     const amountRaw = parseAmountForToken(amount, txPlain.token);
     const { handle } = await ownerHandle.encryptInput(
       amountRaw,
@@ -693,11 +688,7 @@ export async function revokeAuditorAccess(
     shareHandle = context.shareHandle;
     parentKey = context.parentKey;
   } else if (disclosure.isPrivate) {
-    const plain = await decryptDisclosureSecret(
-      ownerHandle,
-      disclosure,
-      context?.disclosureDek,
-    );
+    const plain = await decryptDisclosureSecret(ownerHandle, disclosure);
     grantee = plain.grantee.toLowerCase() as `0x${string}`;
     shareHandle = plain.amountHandle;
     parentKey = plain.parentKey;

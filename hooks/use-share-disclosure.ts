@@ -13,7 +13,6 @@ import {
 import { wagmiConfig } from "@/lib/wagmi";
 import { getWalletClient } from "@wagmi/core";
 import { shareTransactionWithAuditor } from "@/lib/ledger-operations";
-import { getSessionDek } from "@/lib/session-dek-store";
 import { setRevokeContext } from "@/lib/session-revoke-store";
 
 export type ShareStep = "idle" | "nox" | "arkiv" | "done" | "error";
@@ -54,10 +53,7 @@ export function useShareDisclosure() {
           handleClient,
           tx,
           auditor,
-          {
-            auditorLabel: auditorLabel ?? "Third-party auditor",
-            sessionDek: getSessionDek(tx.entityKey),
-          },
+          { auditorLabel: auditorLabel ?? "Third-party auditor" },
         );
         setRevokeContext(result.disclosureEntityKey, result.revokeContext);
         setStep("done");

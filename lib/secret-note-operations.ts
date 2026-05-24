@@ -209,17 +209,11 @@ async function unwrapDekFromHandle(
   );
 }
 
+/** Unwrap DEK via Nox gateway, then AES-decrypt Arkiv ciphertext. */
 export async function decryptSecretNoteSecret(
-  handleClient: HandleClient | null,
+  handleClient: HandleClient,
   note: SecretNoteView,
-  sessionDek?: Uint8Array,
 ): Promise<DecryptedSecretNote> {
-  if (sessionDek) {
-    return decryptSecretNoteWithSessionDek(note, sessionDek);
-  }
-  if (!handleClient) {
-    throw new Error("Nox handle client required to decrypt this note");
-  }
   const dek = await unwrapDekFromHandle(handleClient, note.payload.amountHandle);
   return decryptSecretNoteWithSessionDek(note, dek);
 }
@@ -249,17 +243,17 @@ export async function prepareShareSecretNote(
   auditor: `0x${string}`,
   options?: {
     auditorLabel?: string;
-    sessionDek?: Uint8Array;
   },
 ): Promise<PreparedSecretNoteShare> {
   const shareHandle = note.payload.amountHandle;
   let notePlain: SecretNotePlaintext | undefined;
 
-  if (options?.sessionDek) {
+  if (note.payload.ciphertext && note.payload.iv) {
+    const dek = await unwrapDekFromHandle(ownerHandle, note.payload.amountHandle);
     notePlain = await decryptJson<SecretNotePlaintext>(
       note.payload.ciphertext,
       note.payload.iv,
-      options.sessionDek,
+      dek,
     );
   }
 
@@ -354,7 +348,6 @@ export async function shareSecretNoteWithAuditor(
   auditor: `0x${string}`,
   options?: {
     auditorLabel?: string;
-    sessionDek?: Uint8Array;
   },
 ): Promise<ShareSecretNoteResult> {
   const prepared = await prepareShareSecretNote(

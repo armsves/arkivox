@@ -16,7 +16,6 @@ import {
   prepareShareSecretNote,
   publishShareSecretNote,
 } from "@/lib/secret-note-operations";
-import { getSessionDek } from "@/lib/session-dek-store";
 import { setRevokeContext } from "@/lib/session-revoke-store";
 
 export type ShareNoteStep = "idle" | "nox" | "arkiv" | "done" | "error";
@@ -51,10 +50,7 @@ export function useShareSecretNote() {
           handleClient,
           note,
           recipient,
-          {
-            auditorLabel: recipientLabel ?? "Recipient",
-            sessionDek: getSessionDek(note.entityKey),
-          },
+          { auditorLabel: recipientLabel ?? "Recipient" },
         );
 
         setStep("arkiv");

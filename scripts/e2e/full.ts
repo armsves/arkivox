@@ -4,7 +4,6 @@ import {
   createHandleClient,
   createViemWalletFromPrivateKey,
   decryptTransactionSecret,
-  decryptWithSessionDek,
   fetchDisclosuresForAuditor,
   fetchDisclosuresForOwner,
   fetchRevokedShareHandleHashes,
@@ -52,7 +51,7 @@ export async function runFull(ownerKey: Hex, granteeKey: Hex) {
   );
 
   log("1/8", "record confidential tx");
-  const { entityKey, transaction, sessionDek } = await recordTokenTransaction(
+  const { entityKey, transaction } = await recordTokenTransaction(
     ownerArkiv,
     {
       txType: "transfer",
@@ -63,11 +62,9 @@ export async function runFull(ownerKey: Hex, granteeKey: Hex) {
     },
     { viem: ownerViem, handle: ownerHandle },
   );
-  assert(!!sessionDek, "Expected session DEK");
-
-  log("2/8", "owner reveal (session DEK)");
+  log("2/8", "owner reveal (Nox gateway)");
   assert(
-    (await decryptWithSessionDek(transaction, sessionDek!)).amount === E2E.amount,
+    (await revealWithRetry(ownerHandle, transaction)).amount === E2E.amount,
     "owner reveal failed",
   );
 
@@ -88,7 +85,7 @@ export async function runFull(ownerKey: Hex, granteeKey: Hex) {
     ownerHandle,
     transaction,
     granteeAddr,
-    { auditorLabel: "E2E grantee", sessionDek: sessionDek!, amount: E2E.amount },
+    { auditorLabel: "E2E grantee", amount: E2E.amount },
   );
   const { amountHandle: shareHandle, noxAclGranted, revokeContext } = shareResult;
   log("nox-acl", noxAclGranted ? "granted" : "skipped (encrypt-only handle)");
@@ -118,10 +115,7 @@ export async function runFull(ownerKey: Hex, granteeKey: Hex) {
       /* fall through */
     }
   }
-  if (!dec) {
-    log("6b", "grantee reveal via session DEK (simulates secure handoff in demo)");
-    dec = await decryptWithSessionDek(parent, sessionDek!);
-  }
+  if (!dec) fail("grantee reveal failed — Nox ACL required");
   assert(dec.amount === E2E.amount, "grantee amount mismatch");
 
   let grants = await fetchDisclosuresForAuditor(granteeAddr);

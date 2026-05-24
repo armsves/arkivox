@@ -19,7 +19,6 @@ import {
   type RecordTransactionInput,
 } from "@/lib/ledger-operations";
 import { confidentialTransferOnChain } from "@/lib/ctoken-onchain";
-import { setSessionDek } from "@/lib/session-dek-store";
 import { formatArkivError } from "@/lib/arkiv-errors";
 import { assertBragaFunded } from "@/lib/braga-preflight";
 import {
@@ -133,19 +132,14 @@ export function useRecordTransaction() {
         await assertBragaFunded(owner);
 
         let entityKey: string;
-        let sessionDek: Uint8Array | undefined;
 
         if (prepared) {
           const result = await publishConfidentialTransaction(arkivWallet, prepared);
           entityKey = result.entityKey;
-          sessionDek = result.sessionDek;
         } else {
           const result = await recordTokenTransaction(arkivWallet, params);
           entityKey = result.entityKey;
-          sessionDek = result.sessionDek;
         }
-
-        if (sessionDek) setSessionDek(entityKey, sessionDek);
 
         setStep("done");
         return entityKey;

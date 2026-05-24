@@ -14,7 +14,6 @@ import {
   prepareSecretNoteEncryption,
   publishSecretNote,
 } from "@/lib/secret-note-operations";
-import { setSessionDek } from "@/lib/session-dek-store";
 import { formatArkivError } from "@/lib/arkiv-errors";
 import { assertBragaFunded } from "@/lib/braga-preflight";
 import { commitArkivEncryptionKeyHandle } from "@/lib/handle-registry";
@@ -66,11 +65,7 @@ export function useRecordSecretNote() {
         if (!bragaOwner) throw new Error("Connect wallet on Arkiv Braga");
         await assertBragaFunded(bragaOwner);
 
-        const { entityKey, sessionDek } = await publishSecretNote(
-          ownerArkiv,
-          prepared,
-        );
-        setSessionDek(entityKey, sessionDek);
+        const { entityKey } = await publishSecretNote(ownerArkiv, prepared);
         setStep("done");
         return entityKey;
       } catch (e) {
