@@ -8,6 +8,8 @@ export interface TransactionSecretPayload {
   amountHandle: `0x${string}`;
   /** v3: "dek" = handle wraps DEK; "amount" = handle is Nox amount from cToken */
   wrap?: "dek" | "amount";
+  /** When wrap=amount: Nox DEK handle for Arkiv ciphertext (committed on HandleRegistry) */
+  dekHandle?: `0x${string}`;
   /** Public wrap/unwrap reference — no Nox encryption */
   public?: boolean;
   amount?: string;

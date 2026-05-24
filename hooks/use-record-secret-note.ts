@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useSwitchChain } from "wagmi";
+import { usePublicClient, useSwitchChain } from "wagmi";
 import { getWalletClient } from "@wagmi/core";
 import { arbitrumSepolia } from "viem/chains";
 import { bragaChain } from "@/lib/chains";
@@ -17,11 +17,13 @@ import {
 import { setSessionDek } from "@/lib/session-dek-store";
 import { formatArkivError } from "@/lib/arkiv-errors";
 import { assertBragaFunded } from "@/lib/braga-preflight";
+import { commitArkivEncryptionKeyHandle } from "@/lib/handle-registry";
 
-export type EncryptStep = "idle" | "nox" | "arkiv" | "done" | "error";
+export type EncryptStep = "idle" | "nox" | "sepolia" | "arkiv" | "done" | "error";
 
 export function useRecordSecretNote() {
   const { switchChainAsync } = useSwitchChain();
+  const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
   const [step, setStep] = useState<EncryptStep>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +40,15 @@ export function useRecordSecretNote() {
         const ownerHandle = await getHandleClientForNox();
         // Nox gateway only accepts Arbitrum Sepolia — encrypt before switching chains.
         const prepared = await prepareSecretNoteEncryption(ownerHandle, input);
+
+        setStep("sepolia");
+        if (!publicClient) throw new Error("Arbitrum Sepolia RPC unavailable");
+        await commitArkivEncryptionKeyHandle(
+          ownerViem,
+          publicClient,
+          prepared.outerPayload,
+          "encrypted_note",
+        );
 
         setStep("arkiv");
         await switchChainAsync({ chainId: bragaChain.id });
@@ -59,7 +70,7 @@ export function useRecordSecretNote() {
         return null;
       }
     },
-    [switchChainAsync],
+    [publicClient, switchChainAsync],
   );
 
   const reset = useCallback(() => {

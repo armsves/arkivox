@@ -36,6 +36,18 @@ export function IconDashboard({ className = "w-6 h-6", filled }: { className?: s
   );
 }
 
+export function IconToken({ className = "w-6 h-6", filled }: { className?: string; filled?: boolean }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 1.5} aria-hidden>
+      {filled ? (
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm.31 5.41c1.79 0 3.24 1.45 3.24 3.24 0 1.79-1.45 3.24-3.24 3.24S9.07 12.44 9.07 10.65c0-1.79 1.45-3.24 3.24-3.24ZM12 19c-2.67 0-5.01-1.36-6.38-3.43.03-2.01 4.27-3.11 6.38-3.11s6.35 1.1 6.38 3.11C17.01 17.64 14.67 19 12 19Z" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 3.5a3.15 3.15 0 1 1 0 6.3 3.15 3.15 0 0 1 0-6.3ZM12 19c-2.67 0-5.01-1.36-6.38-3.43.03-2.01 4.27-3.11 6.38-3.11s6.35 1.1 6.38 3.11C17.01 17.64 14.67 19 12 19Z" />
+      )}
+    </svg>
+  );
+}
+
 export function IconAddBox({ className = "w-6 h-6", filled }: { className?: string; filled?: boolean }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 1.5} aria-hidden>

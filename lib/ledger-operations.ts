@@ -37,6 +37,7 @@ import {
   sha256Hex,
   uint256ToDek,
 } from "@/lib/crypto";
+import { arkivEncryptionKeyHandle } from "@/lib/handle-registry";
 import { NOX_COMPUTE_ADDRESS, TEE_COOLDOWN_MS } from "@/lib/nox";
 import {
   grantNoxViewer,
@@ -153,6 +154,7 @@ export type PreparedConfidentialTransaction = {
     v: 3;
     amountHandle: `0x${string}`;
     wrap: "dek" | "amount";
+    dekHandle?: `0x${string}`;
     ciphertext: string;
     iv: string;
     alg: "AES-256-GCM";
@@ -183,17 +185,21 @@ export async function prepareConfidentialTransaction(
 
   let amountHandle: `0x${string}`;
   let wrap: "dek" | "amount";
+  let dekHandle: `0x${string}` | undefined;
+
+  const { handle: noxDekHandle } = await ownerHandle.encryptInput(
+    dekToUint256(sessionDek),
+    "uint256",
+    NOX_COMPUTE_ADDRESS,
+  );
+  const encryptionKeyHandle = noxDekHandle as `0x${string}`;
 
   if (input.existingAmountHandle) {
     amountHandle = input.existingAmountHandle;
+    dekHandle = encryptionKeyHandle;
     wrap = "amount";
   } else {
-    const { handle: dekHandle } = await ownerHandle.encryptInput(
-      dekToUint256(sessionDek),
-      "uint256",
-      NOX_COMPUTE_ADDRESS,
-    );
-    amountHandle = dekHandle as `0x${string}`;
+    amountHandle = encryptionKeyHandle;
     wrap = "dek";
   }
 
@@ -203,6 +209,7 @@ export async function prepareConfidentialTransaction(
     outerPayload: {
       v: 3,
       amountHandle,
+      ...(dekHandle ? { dekHandle } : {}),
       wrap,
       ciphertext,
       iv,
@@ -249,6 +256,7 @@ export async function publishConfidentialTransaction(
       v: 3,
       amountHandle: outerPayload.amountHandle,
       wrap: outerPayload.wrap,
+      dekHandle: outerPayload.dekHandle,
       ciphertext: outerPayload.ciphertext,
       iv: outerPayload.iv,
       alg: "AES-256-GCM",
@@ -380,14 +388,9 @@ export async function decryptTransactionSecret(
   }
 
   if (tx.payload.v === 3 && tx.payload.ciphertext && tx.payload.iv) {
+    const keyHandle = arkivEncryptionKeyHandle(tx.payload);
     const dek =
-      sessionDek ??
-      (tx.payload.wrap === "amount"
-        ? undefined
-        : await unwrapDekFromHandle(handleClient, tx.payload.amountHandle));
-    if (!dek) {
-      throw new Error("Session DEK required for this transaction");
-    }
+      sessionDek ?? (await unwrapDekFromHandle(handleClient, keyHandle));
     const parsed = await decryptJson<TransactionPlaintext>(
       tx.payload.ciphertext,
       tx.payload.iv,

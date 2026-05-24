@@ -113,6 +113,7 @@ function parseTransaction(entity: ArkivEntity): TokenTransactionView | null {
           v: 3,
           amountHandle,
           wrap: json.wrap ?? "dek",
+          dekHandle: json.dekHandle,
           ciphertext: json.ciphertext ?? "",
           iv: json.iv ?? "",
           alg: json.alg ?? "AES-256-GCM",
@@ -132,12 +133,13 @@ function parseTransaction(entity: ArkivEntity): TokenTransactionView | null {
       contentHash: json.contentHash ?? "",
       memo: json.memo ?? "",
       payload: {
-        v: 2,
+        v: (json.v ?? 2) as 2 | 3,
         amountHandle,
         ciphertext: json.ciphertext ?? "",
         iv: json.iv ?? "",
         alg: json.alg ?? "AES-256-GCM",
         wrap: json.wrap,
+        dekHandle: json.dekHandle,
       },
       isPrivate: hasCipher,
     };

@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useSwitchChain } from "wagmi";
+import { usePublicClient, useSwitchChain } from "wagmi";
 import { getWalletClient } from "@wagmi/core";
 import { arbitrumSepolia } from "viem/chains";
 import { isAddress, type Hex } from "viem";
 import { bragaChain } from "@/lib/chains";
-import { isConfidentialTxType, type TxType } from "@/lib/arkiv";
+import { isConfidentialTxType } from "@/lib/arkiv";
 import { wagmiConfig } from "@/lib/wagmi";
 import {
   getArkivWalletClientForBraga,
@@ -18,27 +18,40 @@ import {
   recordTokenTransaction,
   type RecordTransactionInput,
 } from "@/lib/ledger-operations";
+import { confidentialTransferOnChain } from "@/lib/ctoken-onchain";
 import { setSessionDek } from "@/lib/session-dek-store";
 import { formatArkivError } from "@/lib/arkiv-errors";
 import { assertBragaFunded } from "@/lib/braga-preflight";
+import { commitArkivEncryptionKeyHandle } from "@/lib/handle-registry";
 
-export type RecordStep = "idle" | "nox" | "arkiv" | "done" | "error";
+export type RecordStep =
+  | "idle"
+  | "sepolia"
+  | "sepolia-registry"
+  | "nox"
+  | "arkiv"
+  | "done"
+  | "error";
 
 export function useRecordTransaction() {
   const { switchChainAsync } = useSwitchChain();
+  const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
   const [step, setStep] = useState<RecordStep>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const record = useCallback(
-    async (input: {
-      txType: TxType;
-      token: string;
-      counterparty: string;
-      amount: string;
-      memo?: string;
-      noxTxHash?: string;
-      existingAmountHandle?: string;
-    }) => {
+    async (
+      input: {
+        txType: RecordTransactionInput["txType"];
+        token: string;
+        counterparty: string;
+        amount: string;
+        memo?: string;
+        noxTxHash?: string;
+        existingAmountHandle?: string;
+      },
+      options?: { onChainFirst?: boolean },
+    ) => {
       if (!isAddress(input.counterparty)) {
         setError("Invalid counterparty address");
         return null;
@@ -56,17 +69,48 @@ export function useRecordTransaction() {
         };
 
         const confidential = isConfidentialTxType(input.txType);
+        const onChainFirst = options?.onChainFirst ?? true;
         let prepared;
 
         if (confidential) {
-          setStep("nox");
           await switchChainAsync({ chainId: arbitrumSepolia.id });
           const ownerViem = await getWalletClient(wagmiConfig, {
             chainId: arbitrumSepolia.id,
           });
           if (!ownerViem) throw new Error("Connect wallet on Arbitrum Sepolia");
+          if (!publicClient) throw new Error("Arbitrum Sepolia RPC unavailable");
+
           const handle = await getHandleClientForNox();
+
+          if (
+            onChainFirst &&
+            !params.existingAmountHandle &&
+            input.txType === "transfer"
+          ) {
+            setStep("sepolia");
+            const cToken = input.token === "cRLC" ? "cRLC" : "cUSDC";
+            const onChain = await confidentialTransferOnChain(
+              ownerViem,
+              publicClient,
+              handle,
+              cToken,
+              input.amount,
+              input.counterparty as `0x${string}`,
+            );
+            params.existingAmountHandle = onChain.amountHandle;
+            params.noxTxHash = onChain.txHash;
+          }
+
+          setStep("nox");
           prepared = await prepareConfidentialTransaction(handle, params);
+
+          setStep("sepolia-registry");
+          await commitArkivEncryptionKeyHandle(
+            ownerViem,
+            publicClient,
+            prepared.outerPayload,
+            "token_transaction",
+          );
         }
 
         setStep("arkiv");
@@ -99,7 +143,7 @@ export function useRecordTransaction() {
         return null;
       }
     },
-    [switchChainAsync],
+    [publicClient, switchChainAsync],
   );
 
   const reset = useCallback(() => {

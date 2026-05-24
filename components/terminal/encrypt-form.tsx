@@ -1,4 +1,5 @@
 import type { EncryptStep } from "@/hooks/use-record-secret-note";
+import { getHandleRegistryAddress } from "@/lib/handle-registry";
 
 export function EncryptForm({
   title,
@@ -21,19 +22,32 @@ export function EncryptForm({
   encryptError: string | null;
   onSubmit: () => void;
 }) {
-  const busy = encryptStep === "nox" || encryptStep === "arkiv";
+  const registry = getHandleRegistryAddress();
+  const busy =
+    encryptStep === "nox" || encryptStep === "sepolia" || encryptStep === "arkiv";
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-headline-lg text-primary-container">Encrypt &amp; share</h2>
         <p className="mt-2 font-body-md text-on-surface-variant">
-          Your text is encrypted in the browser, the key is wrapped via Nox on Arbitrum Sepolia
-          (no gas), then you sign one Arkiv Braga transaction to publish. You need testnet GLM on
-          Braga — use the Faucets link below if publish fails.
+          Your text is encrypted in the browser, the AES key is wrapped via Nox, then you sign on
+          Sepolia to store that key handle in ArkivoxHandleRegistry, then Arkiv Braga for the
+          ciphertext. You need Sepolia ETH and Braga GLM (Faucets below).
         </p>
         <ol className="mt-3 list-decimal space-y-1 pl-5 font-label-sm text-on-surface-variant normal-case">
-          <li>Stay on Arbitrum Sepolia while the app runs Nox encrypt (usually no wallet popup).</li>
+          <li>Stay on Arbitrum Sepolia for Nox encrypt + HandleRegistry commit.</li>
+          {!registry && (
+            <li className="text-error">
+              Deploy ArkivoxHandleRegistry and set NEXT_PUBLIC_HANDLE_REGISTRY (npm run
+              deploy:registry).
+            </li>
+          )}
+          {registry && (
+            <li>
+              Sign Sepolia tx to store the encryption key handle in the registry contract.
+            </li>
+          )}
           <li>Approve the Arkiv Braga transaction when prompted (this step stores the note).</li>
           <li>
             If you see “replacement underpriced”, open your wallet Activity and cancel any
@@ -78,11 +92,13 @@ export function EncryptForm({
         >
           {encryptStep === "nox"
             ? "Nox encrypt…"
-            : encryptStep === "arkiv"
-              ? "Publishing to Arkiv…"
-              : encryptStep === "done"
-                ? "Encrypted"
-                : "Encrypt on Arkiv"}
+            : encryptStep === "sepolia"
+              ? "Committing handle (Sepolia)…"
+              : encryptStep === "arkiv"
+                ? "Publishing to Arkiv…"
+                : encryptStep === "done"
+                  ? "Encrypted"
+                  : "Encrypt on Arkiv"}
         </button>
         {encryptError && (
           <p className="font-label-sm text-error normal-case">{encryptError}</p>

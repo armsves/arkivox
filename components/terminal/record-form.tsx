@@ -25,6 +25,8 @@ export function RecordForm({
   setNoxTxHash,
   amountHandle,
   setAmountHandle,
+  onChainFirst,
+  setOnChainFirst,
   recordStep,
   recordError,
   onSubmit,
@@ -43,11 +45,13 @@ export function RecordForm({
   setNoxTxHash: (s: string) => void;
   amountHandle: string;
   setAmountHandle: (s: string) => void;
+  onChainFirst: boolean;
+  setOnChainFirst: (v: boolean) => void;
   recordStep: string;
   recordError: string | null;
   onSubmit: () => void;
 }) {
-  const [showHandle, setShowHandle] = useState(!!amountHandle);
+  const [showAdvanced, setShowAdvanced] = useState(!!amountHandle);
   const confidential = isConfidentialTxType(txType);
   const tokenOptions = SUPPORTED_TOKENS.filter((t) =>
     tokensForTxType(txType).includes(t.symbol),
@@ -56,7 +60,7 @@ export function RecordForm({
   const handleTxTypeChange = (next: TxType) => {
     setTxType(next);
     if (!isConfidentialTxType(next)) {
-      setShowHandle(false);
+      setShowAdvanced(false);
       setAmountHandle("");
     }
     const allowed = tokensForTxType(next);
@@ -68,12 +72,17 @@ export function RecordForm({
     if (cp) setCounterparty(cp);
   };
 
+  const busy =
+    recordStep === "sepolia" ||
+    recordStep === "sepolia-registry" ||
+    recordStep === "nox" ||
+    recordStep === "arkiv";
+
   const canSubmit =
     amount &&
     counterparty &&
     isAddress(counterparty) &&
-    recordStep !== "nox" &&
-    recordStep !== "arkiv";
+    !busy;
 
   return (
     <div className="mx-auto max-w-md space-y-6">
@@ -187,16 +196,29 @@ export function RecordForm({
               <input
                 type="checkbox"
                 className="peer sr-only"
-                checked={showHandle}
-                onChange={(e) => setShowHandle(e.target.checked)}
+                checked={onChainFirst}
+                onChange={(e) => setOnChainFirst(e.target.checked)}
               />
-              <div className="h-5 w-5 border border-outline-variant bg-surface-container-lowest peer-checked:border-secondary-fixed-dim peer-checked:bg-secondary-fixed-dim" />
-              <span className="font-label-md text-on-surface-variant">
-                Paste existing Nox handle
+              <div className="h-5 w-5 border border-outline-variant bg-surface-container-lowest peer-checked:border-primary-container peer-checked:bg-primary-container" />
+              <span className="font-label-md text-on-surface-variant normal-case">
+                Run cToken confidentialTransfer on Sepolia first (wallet signs)
               </span>
             </label>
 
-            {showHandle && (
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={showAdvanced}
+                onChange={(e) => setShowAdvanced(e.target.checked)}
+              />
+              <div className="h-5 w-5 border border-outline-variant bg-surface-container-lowest peer-checked:border-secondary-fixed-dim peer-checked:bg-secondary-fixed-dim" />
+              <span className="font-label-md text-on-surface-variant normal-case">
+                Advanced: paste existing on-chain handle
+              </span>
+            </label>
+
+            {showAdvanced && (
               <div className="space-y-1.5">
                 <label className="font-label-md block uppercase text-secondary-fixed-dim">
                   Nox_Amount_Handle
@@ -236,13 +258,19 @@ export function RecordForm({
           onClick={onSubmit}
           className="glow-primary active-scale mt-2 w-full bg-primary-container py-4 font-label-md font-bold uppercase tracking-widest text-on-primary-container transition-all disabled:opacity-50"
         >
-          {recordStep === "nox"
-            ? "Encrypting (Nox)…"
-            : recordStep === "arkiv"
-              ? "Writing (Arkiv)…"
-              : confidential
-                ? "Record & Encrypt"
-                : "Log on Arkiv"}
+          {recordStep === "sepolia"
+            ? "Signing transfer (Sepolia)…"
+            : recordStep === "sepolia-registry"
+              ? "Storing encryption key handle (Sepolia)…"
+              : recordStep === "nox"
+                ? "Encrypting ledger (Nox)…"
+                : recordStep === "arkiv"
+                  ? "Writing (Arkiv)…"
+                : confidential
+                  ? onChainFirst
+                    ? "Transfer on Sepolia + log on Arkiv"
+                    : "Encrypt & log on Arkiv"
+                  : "Log on Arkiv"}
         </button>
       </div>
 
@@ -253,9 +281,10 @@ export function RecordForm({
         <p className="font-label-sm leading-relaxed text-on-surface-variant normal-case">
           {confidential ? (
             <>
-              Amount and memo are AES-encrypted on Arkiv; the DEK is wrapped in a Nox
-              handle on Arbitrum Sepolia. Only you or authorized viewers can reveal
-              them.
+              Flow: cToken transfer on Sepolia (amount handle on contract) → Nox wraps
+              the AES key → your wallet stores that key handle in{" "}
+              <code className="text-primary-container">ArkivoxHandleRegistry</code> on
+              Sepolia → Arkiv Braga stores ciphertext. Use the Tokens tab for wrap/unwrap.
             </>
           ) : (
             <>

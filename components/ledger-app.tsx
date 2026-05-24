@@ -47,12 +47,16 @@ import { AuditorPanel } from "@/components/terminal/auditor-panel";
 import { SharePanel } from "@/components/terminal/share-panel";
 import { EncryptForm } from "@/components/terminal/encrypt-form";
 import { SecretNoteCard } from "@/components/terminal/secret-note-card";
+import { TokensPanel } from "@/components/terminal/tokens-panel";
 import { FaucetsModal } from "@/components/terminal/faucets-modal";
+import { isConfidentialTxType } from "@/lib/arkiv";
 
 type Tab = AppTab;
 
 function chainBadge(chainId: number, tab: Tab) {
-  if (tab === "record" || tab === "encrypt") return "Arb Sepolia (Nox)";
+  if (tab === "tokens" || tab === "record" || tab === "encrypt") {
+    return "Arb Sepolia + Braga";
+  }
   if (chainId === bragaChain.id) return "Braga (Arkiv)";
   if (chainId === arbitrumSepolia.id) return "Arb Sepolia (Nox)";
   return `Chain ${chainId}`;
@@ -61,6 +65,7 @@ function chainBadge(chainId: number, tab: Tab) {
 function headerTitle(tab: Tab, connected: boolean) {
   if (!connected) return BRAND.name;
   if (tab === "about") return BRAND.name;
+  if (tab === "tokens") return "Tokens";
   if (tab === "record") return "Record";
   if (tab === "encrypt") return "Encrypt";
   return BRAND.name;
@@ -121,6 +126,7 @@ export function LedgerApp() {
   const [memo, setMemo] = useState("");
   const [noxTxHash, setNoxTxHash] = useState("");
   const [amountHandle, setAmountHandle] = useState("");
+  const [onChainFirst, setOnChainFirst] = useState(true);
   const [auditorAddr, setAuditorAddr] = useState("");
   const [sharingTx, setSharingTx] = useState<TokenTransactionView | null>(null);
   const [sharingNote, setSharingNote] = useState<SecretNoteView | null>(null);
@@ -149,15 +155,20 @@ export function LedgerApp() {
   }, [ownerDisclosures.data]);
 
   const onRecord = async () => {
-    const key = await record({
-      txType,
-      token,
-      counterparty,
-      amount,
-      memo: memo || undefined,
-      noxTxHash: noxTxHash || undefined,
-      existingAmountHandle: amountHandle || undefined,
-    });
+    const useOnChain =
+      isConfidentialTxType(txType) && onChainFirst && !amountHandle;
+    const key = await record(
+      {
+        txType,
+        token,
+        counterparty,
+        amount,
+        memo: memo || undefined,
+        noxTxHash: noxTxHash || undefined,
+        existingAmountHandle: amountHandle || undefined,
+      },
+      { onChainFirst: useOnChain },
+    );
     if (key) {
       setAmount("");
       setMemo("");
@@ -457,6 +468,8 @@ export function LedgerApp() {
             </div>
           )}
 
+          {tab === "tokens" && <TokensPanel />}
+
           {tab === "encrypt" && (
             <EncryptForm
               title={noteTitle}
@@ -487,6 +500,8 @@ export function LedgerApp() {
               setNoxTxHash={setNoxTxHash}
               amountHandle={amountHandle}
               setAmountHandle={setAmountHandle}
+              onChainFirst={onChainFirst}
+              setOnChainFirst={setOnChainFirst}
               recordStep={recordStep}
               recordError={recordError}
               onSubmit={onRecord}
