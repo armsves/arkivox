@@ -2,12 +2,8 @@
 
 import { useMemo } from "react";
 import { useAccount, useWalletClient } from "wagmi";
-import {
-  createWalletClient as createArkivWalletClient,
-  custom,
-} from "@arkiv-network/sdk";
-import { braga } from "@arkiv-network/sdk/chains";
 import { bragaChain } from "@/lib/chains";
+import { createArkivWalletFromSigner } from "@/lib/arkiv-wallet";
 
 export function useArkivWalletClient() {
   const { address } = useAccount();
@@ -16,11 +12,11 @@ export function useArkivWalletClient() {
   const client = useMemo(() => {
     if (!wagmiWalletClient || !address) return null;
     if (wagmiWalletClient.chain?.id !== bragaChain.id) return null;
-    return createArkivWalletClient({
-      chain: braga,
-      transport: custom(wagmiWalletClient.transport),
-      account: address,
-    });
+    if (!wagmiWalletClient.account) return null;
+    return createArkivWalletFromSigner(
+      wagmiWalletClient.transport,
+      wagmiWalletClient.account,
+    );
   }, [wagmiWalletClient, address]);
 
   const onBraga = wagmiWalletClient?.chain?.id === bragaChain.id;

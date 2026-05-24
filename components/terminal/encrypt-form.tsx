@@ -1,5 +1,6 @@
 import type { EncryptStep } from "@/hooks/use-record-secret-note";
 import { getHandleRegistryAddress } from "@/lib/handle-registry";
+import { ArkivPublishHint } from "./arkiv-publish-hint";
 
 export function EncryptForm({
   title,
@@ -48,13 +49,18 @@ export function EncryptForm({
               Sign Sepolia tx to store the encryption key handle in the registry contract.
             </li>
           )}
-          <li>Approve the Arkiv Braga transaction when prompted (this step stores the note).</li>
           <li>
-            If you see “replacement underpriced”, open your wallet Activity and cancel any
-            stuck Arkiv Braga transaction, then retry.
+            Approve the Arkiv Braga transaction — storage is paid in GLM as gas (tx value is
+            0).
+          </li>
+          <li>
+            If you see “replacement underpriced” or “pending nonce”, cancel the stuck Braga
+            tx in your wallet, fund GLM from the faucet, then retry.
           </li>
         </ol>
       </div>
+
+      <ArkivPublishHint />
 
       <div className="space-y-4 border border-outline-variant bg-surface-container-low p-4">
         <label className="block space-y-1">

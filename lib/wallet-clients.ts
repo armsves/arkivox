@@ -1,13 +1,9 @@
 import { getWalletClient } from "@wagmi/core";
-import {
-  createWalletClient as createArkivWalletClient,
-  custom,
-} from "@arkiv-network/sdk";
-import { braga } from "@arkiv-network/sdk/chains";
 import { createViemHandleClient } from "@iexec-nox/handle";
 import { arbitrumSepolia } from "viem/chains";
 import { bragaChain } from "@/lib/chains";
 import { wagmiConfig } from "@/lib/wagmi";
+import { createArkivWalletFromSigner } from "@/lib/arkiv-wallet";
 
 export async function getHandleClientForNox() {
   const walletClient = await getWalletClient(wagmiConfig, {
@@ -19,6 +15,7 @@ export async function getHandleClientForNox() {
   return createViemHandleClient(walletClient);
 }
 
+/** Arkiv Braga wallet — `custom(metamask)` per MetaMask sketch tutorial. */
 export async function getArkivWalletClientForBraga() {
   const walletClient = await getWalletClient(wagmiConfig, {
     chainId: bragaChain.id,
@@ -28,9 +25,5 @@ export async function getArkivWalletClientForBraga() {
       "Wallet not connected on Arkiv Braga. Switch to Arkiv Braga testnet in your wallet, then retry.",
     );
   }
-  return createArkivWalletClient({
-    chain: braga,
-    transport: custom(walletClient.transport),
-    account: walletClient.account,
-  });
+  return createArkivWalletFromSigner(walletClient.transport, walletClient.account);
 }

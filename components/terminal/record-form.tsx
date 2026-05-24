@@ -9,6 +9,7 @@ import {
 } from "@/lib/ctoken-contracts";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
 import { IconSecurity } from "./icons";
+import { ArkivPublishHint } from "./arkiv-publish-hint";
 
 export function RecordForm({
   txType,
@@ -273,6 +274,8 @@ export function RecordForm({
                   : "Log on Arkiv"}
         </button>
       </div>
+
+      <ArkivPublishHint />
 
       <div className="flex gap-3 border border-outline-variant bg-surface-container-low p-4">
         <span className="text-secondary-fixed-dim">

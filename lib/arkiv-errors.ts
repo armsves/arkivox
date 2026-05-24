@@ -34,8 +34,10 @@ export function formatArkivError(error: unknown): string {
   if (/non-golembase/i.test(combined)) {
     return "Wrong transaction type for Braga. Stay on Arkiv Braga when signing the publish step.";
   }
-  if (/insufficient|funds|balance/i.test(combined)) {
-    return `${combined} Fund GLM on Arkiv Braga: https://braga.hoodi.arkiv.network/faucet/`;
+  if (/insufficient|funds|balance|GLM/i.test(combined)) {
+    return combined.includes("faucet")
+      ? combined
+      : `${combined} Arkiv stores data by charging GLM as transaction gas (not tx value). Fund Braga: https://braga.hoodi.arkiv.network/faucet/`;
   }
   if (/rejected|denied|cancelled/i.test(combined)) {
     return "Transaction rejected in wallet.";
