@@ -49,6 +49,7 @@ export interface AuditorDisclosureView {
   entityKey: string;
   parentKey: string;
   parentKeyHash?: string;
+  parentKind: "token_transaction" | "encrypted_note";
   grantee: string;
   granteeHash?: string;
   auditorLabel: string;
@@ -57,6 +58,32 @@ export interface AuditorDisclosureView {
   counterparty: string;
   payload: AuditorDisclosurePayload;
   isPrivate: boolean;
+}
+
+export interface SecretNotePayload {
+  v: 3;
+  amountHandle: `0x${string}`;
+  wrap: "dek";
+  ciphertext: string;
+  iv: string;
+  alg: "AES-256-GCM";
+}
+
+export interface SecretNoteView {
+  entityKey: string;
+  title: string;
+  label: string;
+  owner: string;
+  createdAt: number;
+  payload: SecretNotePayload;
+  isPrivate: true;
+}
+
+export interface DecryptedSecretNote {
+  title: string;
+  body: string;
+  label: string;
+  created: number;
 }
 
 export interface DecryptedTransaction {
@@ -70,6 +97,7 @@ export interface DecryptedTransaction {
 }
 
 export interface DecryptedDisclosure {
+  kind: "transaction" | "secret_note";
   parentKey: string;
   grantee: string;
   auditorLabel: string;
@@ -77,6 +105,7 @@ export interface DecryptedDisclosure {
   txType: TxType;
   token: string;
   counterparty: string;
+  noteTitle?: string;
 }
 
 /** @deprecated legacy vault types */

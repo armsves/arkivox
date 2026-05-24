@@ -8,7 +8,11 @@ import { useRecordTransaction } from "@/hooks/use-record-transaction";
 import { useShareDisclosure } from "@/hooks/use-share-disclosure";
 import { useRevokeDisclosure } from "@/hooks/use-revoke-disclosure";
 import { useDecryptTransaction } from "@/hooks/use-decrypt-transaction";
+import { useRecordSecretNote } from "@/hooks/use-record-secret-note";
+import { useDecryptSecretNote } from "@/hooks/use-decrypt-secret-note";
+import { useShareSecretNote } from "@/hooks/use-share-secret-note";
 import { fetchTransactionByKey } from "@/lib/ledger-queries";
+import { decryptSharedSecretNote } from "@/lib/secret-note-operations";
 import {
   fetchRevokedShareHandleHashes,
   isShareHandleRevoked,
@@ -16,7 +20,13 @@ import {
 import { decryptDisclosureSecret } from "@/lib/ledger-operations";
 import { parentKeyHash } from "@/lib/ledger-secrets";
 import { getHandleClientForNox } from "@/lib/wallet-clients";
-import type { AuditorDisclosureView, DecryptedDisclosure, TokenTransactionView } from "@/lib/types";
+import type {
+  AuditorDisclosureView,
+  DecryptedDisclosure,
+  DecryptedSecretNote,
+  SecretNoteView,
+  TokenTransactionView,
+} from "@/lib/types";
 import type { TxType } from "@/lib/arkiv";
 import { bragaChain } from "@/lib/chains";
 import { BRAND } from "@/lib/brand";
@@ -35,12 +45,14 @@ import { LedgerCard } from "@/components/terminal/ledger-card";
 import { RecordForm } from "@/components/terminal/record-form";
 import { AuditorPanel } from "@/components/terminal/auditor-panel";
 import { SharePanel } from "@/components/terminal/share-panel";
+import { EncryptForm } from "@/components/terminal/encrypt-form";
+import { SecretNoteCard } from "@/components/terminal/secret-note-card";
 import { FaucetsModal } from "@/components/terminal/faucets-modal";
 
 type Tab = AppTab;
 
 function chainBadge(chainId: number, tab: Tab) {
-  if (tab === "record") return "Arb Sepolia (Nox)";
+  if (tab === "record" || tab === "encrypt") return "Arb Sepolia (Nox)";
   if (chainId === bragaChain.id) return "Braga (Arkiv)";
   if (chainId === arbitrumSepolia.id) return "Arb Sepolia (Nox)";
   return `Chain ${chainId}`;
@@ -50,6 +62,7 @@ function headerTitle(tab: Tab, connected: boolean) {
   if (!connected) return BRAND.name;
   if (tab === "about") return BRAND.name;
   if (tab === "record") return "Record";
+  if (tab === "encrypt") return "Encrypt";
   return BRAND.name;
 }
 
@@ -69,7 +82,7 @@ export function LedgerApp() {
   const [tab, setTab] = useState<Tab>("about");
   const [faucetsOpen, setFaucetsOpen] = useState(false);
 
-  const { transactions, disclosures, ownerDisclosures } = useLedger();
+  const { transactions, disclosures, ownerDisclosures, secretNotes } = useLedger();
   const { record, step: recordStep, error: recordError, reset: resetRecord } =
     useRecordTransaction();
   const { share, step: shareStep, error: shareError, reset: resetShare } =
@@ -82,6 +95,24 @@ export function LedgerApp() {
     reset: resetRevoke,
   } = useRevokeDisclosure();
   const { revealed, busyKey, error: decryptError, reveal } = useDecryptTransaction();
+  const {
+    record: recordNote,
+    step: encryptStep,
+    error: encryptError,
+    reset: resetEncrypt,
+  } = useRecordSecretNote();
+  const {
+    revealed: revealedNotes,
+    busyKey: noteBusyKey,
+    error: noteDecryptError,
+    reveal: revealNote,
+  } = useDecryptSecretNote();
+  const {
+    share: shareNote,
+    step: shareNoteStep,
+    error: shareNoteError,
+    reset: resetShareNote,
+  } = useShareSecretNote();
 
   const [txType, setTxType] = useState<TxType>("transfer");
   const [token, setToken] = useState("cUSDC");
@@ -92,10 +123,17 @@ export function LedgerApp() {
   const [amountHandle, setAmountHandle] = useState("");
   const [auditorAddr, setAuditorAddr] = useState("");
   const [sharingTx, setSharingTx] = useState<TokenTransactionView | null>(null);
+  const [sharingNote, setSharingNote] = useState<SecretNoteView | null>(null);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteBody, setNoteBody] = useState("");
+  const [noteLabel, setNoteLabel] = useState("");
   const [auditorBusyKey, setAuditorBusyKey] = useState<string | null>(null);
   const [auditorError, setAuditorError] = useState<string | null>(null);
   const [disclosureMeta, setDisclosureMeta] = useState<
     Record<string, DecryptedDisclosure>
+  >({});
+  const [revealedNotesForAuditor, setRevealedNotesForAuditor] = useState<
+    Record<string, DecryptedSecretNote>
   >({});
 
   const disclosuresByParent = useMemo(() => {
@@ -142,6 +180,33 @@ export function LedgerApp() {
     }
   };
 
+  const onShareNote = async () => {
+    if (!sharingNote) return;
+    const ok = await shareNote(sharingNote, auditorAddr);
+    if (ok) {
+      setAuditorAddr("");
+      setSharingNote(null);
+      resetShareNote();
+      await ownerDisclosures.refetch();
+    }
+  };
+
+  const onEncrypt = async () => {
+    const key = await recordNote({
+      title: noteTitle,
+      body: noteBody,
+      label: noteLabel || undefined,
+    });
+    if (key) {
+      setNoteTitle("");
+      setNoteBody("");
+      setNoteLabel("");
+      resetEncrypt();
+      await secretNotes.refetch();
+      setTab("ledger");
+    }
+  };
+
   const onRevoke = async (d: AuditorDisclosureView) => {
     const ok = await revoke(d);
     if (ok) {
@@ -163,6 +228,7 @@ export function LedgerApp() {
           setDisclosureMeta((prev) => ({ ...prev, [d.entityKey]: meta! }));
         } else {
           meta = {
+            kind: "transaction",
             parentKey: d.parentKey,
             grantee: d.grantee,
             auditorLabel: d.auditorLabel,
@@ -181,6 +247,17 @@ export function LedgerApp() {
           );
           return;
         }
+      }
+      if (meta.kind === "secret_note" || d.parentKind === "encrypted_note") {
+        await switchChainAsync({ chainId: arbitrumSepolia.id });
+        const handleClient = await getHandleClientForNox();
+        const note = await decryptSharedSecretNote(handleClient, meta);
+        setDisclosureMeta((prev) => ({
+          ...prev,
+          [d.entityKey]: { ...meta, noteTitle: note.title },
+        }));
+        setRevealedNotesForAuditor((prev) => ({ ...prev, [d.entityKey]: note }));
+        return;
       }
       const tx = await fetchTransactionByKey(meta.parentKey);
       if (!tx) return;
@@ -293,9 +370,36 @@ export function LedgerApp() {
                 })}
               </div>
 
+              {secretNotes.data && secretNotes.data.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-headline-md text-primary-container">
+                    Encrypted notes
+                  </h3>
+                  {secretNotes.data.map((note) => {
+                    const shared =
+                      disclosuresByParent.get(note.entityKey) ??
+                      disclosuresByParent.get(parentKeyHash(note.entityKey)) ??
+                      [];
+                    return (
+                      <SecretNoteCard
+                        key={note.entityKey}
+                        note={note}
+                        decrypted={revealedNotes[note.entityKey]}
+                        shared={shared}
+                        busyReveal={noteBusyKey === note.entityKey}
+                        busyRevokeKey={revokeBusyKey}
+                        onReveal={() => revealNote(note)}
+                        onShare={() => setSharingNote(note)}
+                        onRevoke={onRevoke}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
               {sharingTx && (
                 <SharePanel
-                  tx={sharingTx}
+                  subjectLabel={`${sharingTx.token} ${sharingTx.txType}`}
                   auditorAddr={auditorAddr}
                   setAuditorAddr={setAuditorAddr}
                   shareStep={shareStep}
@@ -305,8 +409,23 @@ export function LedgerApp() {
                 />
               )}
 
+              {sharingNote && (
+                <SharePanel
+                  subjectLabel={sharingNote.title}
+                  auditorAddr={auditorAddr}
+                  setAuditorAddr={setAuditorAddr}
+                  shareStep={shareNoteStep}
+                  shareError={shareNoteError}
+                  onShare={onShareNote}
+                  onCancel={() => setSharingNote(null)}
+                />
+              )}
+
               {decryptError && (
                 <p className="font-label-md text-error normal-case">{decryptError}</p>
+              )}
+              {noteDecryptError && (
+                <p className="font-label-md text-error normal-case">{noteDecryptError}</p>
               )}
               {revokeError && (
                 <p className="font-label-md text-error normal-case">{revokeError}</p>
@@ -338,6 +457,20 @@ export function LedgerApp() {
             </div>
           )}
 
+          {tab === "encrypt" && (
+            <EncryptForm
+              title={noteTitle}
+              setTitle={setNoteTitle}
+              body={noteBody}
+              setBody={setNoteBody}
+              label={noteLabel}
+              setLabel={setNoteLabel}
+              encryptStep={encryptStep}
+              encryptError={encryptError}
+              onSubmit={onEncrypt}
+            />
+          )}
+
           {tab === "record" && (
             <RecordForm
               txType={txType}
@@ -366,6 +499,7 @@ export function LedgerApp() {
               isLoading={disclosures.isLoading}
               disclosureMeta={disclosureMeta}
               revealed={revealed}
+              revealedNotes={revealedNotesForAuditor}
               busyKey={busyKey}
               auditorBusyKey={auditorBusyKey}
               decryptError={decryptError}

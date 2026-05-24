@@ -1,6 +1,13 @@
 import { eq } from "@arkiv-network/sdk/query";
 import { arkivPublicClient } from "@/lib/arkiv-client";
-import { ENTITY_TYPES, isConfidentialTxType, isProjectScopedEntity, projectScopePredicate } from "@/lib/arkiv";
+import {
+  ENTITY_TYPES,
+  PARENT_KINDS,
+  isConfidentialTxType,
+  isProjectScopedEntity,
+  projectScopePredicate,
+  type ParentKind,
+} from "@/lib/arkiv";
 import {
   granteeHash,
   parentKeyHash,
@@ -166,12 +173,16 @@ function parseDisclosure(entity: ArkivEntity): AuditorDisclosureView | null {
       attr(entity, "parentKeyHash") ??
       (json.parentKey ? parentKeyHash(json.parentKey) : undefined);
 
+    const parentKind = (attr(entity, "parentKind") ??
+      PARENT_KINDS.transaction) as ParentKind;
+
     if (!isPrivate) {
       if (!json.parentKey || !json.grantee) return null;
       return {
         entityKey: entity.key,
         parentKey: json.parentKey,
         parentKeyHash: pHash,
+        parentKind,
         grantee: json.grantee.toLowerCase(),
         granteeHash: gHash,
         auditorLabel: json.auditorLabel ?? json.label ?? "Auditor access",
@@ -189,6 +200,7 @@ function parseDisclosure(entity: ArkivEntity): AuditorDisclosureView | null {
       entityKey: entity.key,
       parentKey: "",
       parentKeyHash: pHash,
+      parentKind,
       grantee: "",
       granteeHash: gHash,
       auditorLabel: "Encrypted disclosure",

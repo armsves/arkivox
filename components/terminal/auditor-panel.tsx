@@ -1,6 +1,11 @@
 "use client";
 
-import type { AuditorDisclosureView, DecryptedDisclosure, DecryptedTransaction } from "@/lib/types";
+import type {
+  AuditorDisclosureView,
+  DecryptedDisclosure,
+  DecryptedSecretNote,
+  DecryptedTransaction,
+} from "@/lib/types";
 import type { TxType } from "@/lib/arkiv";
 import { PrivacyBadge } from "./privacy-badge";
 import { IconSecurity } from "./icons";
@@ -22,6 +27,7 @@ export function AuditorPanel({
   isLoading,
   disclosureMeta,
   revealed,
+  revealedNotes,
   busyKey,
   auditorBusyKey,
   decryptError,
@@ -32,6 +38,7 @@ export function AuditorPanel({
   isLoading: boolean;
   disclosureMeta: Record<string, DecryptedDisclosure>;
   revealed: Record<string, DecryptedTransaction>;
+  revealedNotes: Record<string, DecryptedSecretNote>;
   busyKey: string | null;
   auditorBusyKey: string | null;
   decryptError: string | null;
@@ -56,7 +63,10 @@ export function AuditorPanel({
       {disclosures.map((d) => {
         const meta = disclosureMeta[d.entityKey];
         const show = meta ?? (d.isPrivate ? null : d);
+        const isNote =
+          meta?.kind === "secret_note" || d.parentKind === "encrypted_note";
         const dec = revealed[d.entityKey];
+        const noteDec = revealedNotes[d.entityKey];
         const busy = busyKey === d.entityKey || auditorBusyKey === d.entityKey;
 
         return (
@@ -99,40 +109,73 @@ export function AuditorPanel({
               </div>
 
               <div className="divide-y divide-outline-variant border border-outline-variant bg-surface-container-low">
-                <div className="flex flex-col gap-1 p-4">
-                  <span className="font-label-sm uppercase text-outline">Action Type</span>
-                  {show ? (
-                    <span className="font-headline-md text-on-surface">
-                      {txLabel(show.txType)}
-                    </span>
-                  ) : (
-                    <PrivacyBadge state="encrypted" />
-                  )}
-                </div>
-                <div className="flex flex-col gap-1 p-4">
-                  <span className="font-label-sm uppercase text-outline">
-                    Asset & Volume
-                  </span>
-                  {dec ? (
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-headline-lg text-primary-container">
-                        {dec.amount}
-                      </span>
-                      <span className="font-headline-md">{dec.token}</span>
+                {isNote ? (
+                  <>
+                    <div className="flex flex-col gap-1 p-4">
+                      <span className="font-label-sm uppercase text-outline">Type</span>
+                      <span className="font-headline-md text-on-surface">Encrypted note</span>
                     </div>
-                  ) : (
-                    <span className="font-headline-md text-on-surface-variant">••••••</span>
-                  )}
-                </div>
-                {show && (
-                  <div className="flex flex-col gap-1 p-4">
-                    <span className="font-label-sm uppercase text-outline">
-                      Counterparty
-                    </span>
-                    <p className="font-label-md text-on-surface">
-                      {truncate(show.counterparty)}
-                    </p>
-                  </div>
+                    <div className="flex flex-col gap-1 p-4">
+                      <span className="font-label-sm uppercase text-outline">Title</span>
+                      {noteDec ? (
+                        <span className="font-headline-md text-on-surface">{noteDec.title}</span>
+                      ) : (
+                        <span className="font-headline-md text-on-surface-variant">
+                          {meta?.noteTitle ?? "••••••"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1 p-4">
+                      <span className="font-label-sm uppercase text-outline">Content</span>
+                      {noteDec ? (
+                        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words font-body-md text-on-surface normal-case">
+                          {noteDec.body}
+                        </pre>
+                      ) : (
+                        <PrivacyBadge state="encrypted" />
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-1 p-4">
+                      <span className="font-label-sm uppercase text-outline">Action Type</span>
+                      {show ? (
+                        <span className="font-headline-md text-on-surface">
+                          {txLabel(show.txType)}
+                        </span>
+                      ) : (
+                        <PrivacyBadge state="encrypted" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1 p-4">
+                      <span className="font-label-sm uppercase text-outline">
+                        Asset & Volume
+                      </span>
+                      {dec ? (
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-headline-lg text-primary-container">
+                            {dec.amount}
+                          </span>
+                          <span className="font-headline-md">{dec.token}</span>
+                        </div>
+                      ) : (
+                        <span className="font-headline-md text-on-surface-variant">
+                          ••••••
+                        </span>
+                      )}
+                    </div>
+                    {show && (
+                      <div className="flex flex-col gap-1 p-4">
+                        <span className="font-label-sm uppercase text-outline">
+                          Counterparty
+                        </span>
+                        <p className="font-label-md text-on-surface">
+                          {truncate(show.counterparty)}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </section>
@@ -143,10 +186,10 @@ export function AuditorPanel({
               onClick={() => onReveal(d)}
               className="active-scale flex w-full items-center justify-center gap-2 bg-primary-container py-4 font-headline-md font-bold uppercase text-on-primary disabled:opacity-50"
             >
-              {busy ? "Decrypting…" : "Reveal Amount"}
+              {busy ? "Decrypting…" : isNote ? "Reveal note" : "Reveal Amount"}
             </button>
 
-            {dec?.memo && (
+            {!isNote && dec?.memo && (
               <p className="font-body-md text-on-surface-variant">
                 Memo: <span className="text-on-surface">{dec.memo}</span>
               </p>

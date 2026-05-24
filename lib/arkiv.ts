@@ -57,11 +57,20 @@ export function isProjectScopedEntity(
 export const ENTITY_TYPES = {
   /** Encrypted token movement logged on Arkiv */
   transaction: "token_transaction",
+  /** Arbitrary encrypted text (AES + Nox DEK) */
+  encryptedNote: "encrypted_note",
   /** Third party (auditor) may decrypt amount via Nox ACL */
   disclosure: "auditor_disclosure",
   /** On-chain Nox revoke + tombstone when disclosure deleted */
   revocation: "auditor_revocation",
 } as const;
+
+export const PARENT_KINDS = {
+  transaction: "token_transaction",
+  note: "encrypted_note",
+} as const;
+
+export type ParentKind = (typeof PARENT_KINDS)[keyof typeof PARENT_KINDS];
 
 export const TX_TYPES = ["transfer", "wrap", "unwrap"] as const;
 export type TxType = (typeof TX_TYPES)[number];

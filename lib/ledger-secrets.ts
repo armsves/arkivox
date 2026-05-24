@@ -27,13 +27,22 @@ export interface TransactionPlaintext {
 }
 
 export interface DisclosurePlaintext {
+  kind: "transaction" | "secret_note";
   parentKey: string;
   grantee: string;
   auditorLabel: string;
   amountHandle: `0x${string}`;
-  txType: TxType;
-  token: string;
-  counterparty: string;
+  txType?: TxType;
+  token?: string;
+  counterparty?: string;
+  noteTitle?: string;
+}
+
+export interface SecretNotePlaintext {
+  title: string;
+  body: string;
+  label: string;
+  created: number;
 }
 
 export async function encryptJson<T>(data: T, dek: Uint8Array) {

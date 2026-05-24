@@ -7,6 +7,7 @@ import {
   fetchDisclosuresForOwner,
   fetchMyTransactions,
 } from "@/lib/ledger-queries";
+import { fetchMySecretNotes } from "@/lib/secret-note-queries";
 
 export function useLedger() {
   const { address } = useAccount();
@@ -32,5 +33,12 @@ export function useLedger() {
     refetchInterval: 15_000,
   });
 
-  return { transactions, disclosures, ownerDisclosures };
+  const secretNotes = useQuery({
+    queryKey: ["ledger-secret-notes", address],
+    queryFn: () => fetchMySecretNotes(address!),
+    enabled: !!address,
+    refetchInterval: 15_000,
+  });
+
+  return { transactions, disclosures, ownerDisclosures, secretNotes };
 }

@@ -1,7 +1,5 @@
-import type { TokenTransactionView } from "@/lib/types";
-
 export function SharePanel({
-  tx,
+  subjectLabel,
   auditorAddr,
   setAuditorAddr,
   shareStep,
@@ -9,7 +7,7 @@ export function SharePanel({
   onShare,
   onCancel,
 }: {
-  tx: TokenTransactionView;
+  subjectLabel: string;
   auditorAddr: string;
   setAuditorAddr: (s: string) => void;
   shareStep: string;
@@ -20,7 +18,7 @@ export function SharePanel({
   return (
     <div className="mt-6 border border-secondary-fixed-dim bg-surface-container-low p-4">
       <p className="font-label-md text-on-surface">
-        Disclose to third party — {tx.token} {tx.txType}
+        Disclose to third party — {subjectLabel}
       </p>
       <p className="mt-1 font-label-sm text-on-surface-variant normal-case">
         Nox addViewer + Arkiv auditor_disclosure (v3 encrypted)

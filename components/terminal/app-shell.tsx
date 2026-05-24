@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { IconAddBox, IconDashboard, IconInfo, IconShare, IconWallet } from "./icons";
+import { IconAddBox, IconDashboard, IconInfo, IconLock, IconShare, IconWallet } from "./icons";
 
-export type AppTab = "about" | "ledger" | "record" | "auditor";
+export type AppTab = "about" | "ledger" | "record" | "encrypt" | "auditor";
 
 export function AppHeader({
   title,
@@ -52,9 +52,10 @@ export function BottomNav({
 }) {
   const items: { id: AppTab; label: string }[] = [
     { id: "about", label: "About" },
-    { id: "ledger", label: "My Ledger" },
+    { id: "ledger", label: "Ledger" },
     { id: "record", label: "Record" },
-    { id: "auditor", label: "Disclosures" },
+    { id: "encrypt", label: "Encrypt" },
+    { id: "auditor", label: "Shared" },
   ];
 
   return (
@@ -88,6 +89,7 @@ function NavIcon({ id, active }: { id: AppTab; active: boolean }) {
   if (id === "about") return <IconInfo className={cn} filled={active} />;
   if (id === "ledger") return <IconDashboard className={cn} filled={active} />;
   if (id === "record") return <IconAddBox className={cn} filled={active} />;
+  if (id === "encrypt") return <IconLock className={cn} />;
   return <IconShare className={cn} filled={active} />;
 }
 

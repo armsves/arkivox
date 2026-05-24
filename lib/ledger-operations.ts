@@ -20,7 +20,14 @@ import {
   type WalletClient,
 } from "viem";
 import { arbitrumSepolia } from "viem/chains";
-import { ENTITY_TYPES, ENTITY_EXPIRES_IN, PROJECT_ATTRIBUTE, isConfidentialTxType, type TxType } from "@/lib/arkiv";
+import {
+  ENTITY_TYPES,
+  ENTITY_EXPIRES_IN,
+  PARENT_KINDS,
+  PROJECT_ATTRIBUTE,
+  isConfidentialTxType,
+  type TxType,
+} from "@/lib/arkiv";
 import { formatAmountForToken, parseAmountForToken } from "@/lib/amount";
 import { PUBLIC_TX_AMOUNT_HANDLE } from "@/lib/ctoken-contracts";
 import {
@@ -379,6 +386,7 @@ export async function decryptDisclosureSecret(
 ): Promise<DecryptedDisclosure> {
   if (!disclosure.isPrivate) {
     return {
+      kind: "transaction",
       parentKey: disclosure.parentKey,
       grantee: disclosure.grantee,
       auditorLabel: disclosure.auditorLabel,
@@ -397,11 +405,22 @@ export async function decryptDisclosureSecret(
     sessionDek ??
     (await unwrapDekFromHandle(handleClient, disclosure.payload.amountHandle));
 
-  return decryptJson<DisclosurePlaintext>(
+  const parsed = await decryptJson<DisclosurePlaintext>(
     disclosure.payload.ciphertext,
     disclosure.payload.iv,
     dek,
   );
+  return {
+    kind: parsed.kind ?? "transaction",
+    parentKey: parsed.parentKey,
+    grantee: parsed.grantee,
+    auditorLabel: parsed.auditorLabel,
+    amountHandle: parsed.amountHandle,
+    txType: parsed.txType ?? "transfer",
+    token: parsed.token ?? "—",
+    counterparty: parsed.counterparty ?? "",
+    noteTitle: parsed.noteTitle,
+  };
 }
 
 
@@ -433,6 +452,7 @@ export async function createAuditorDisclosure(
 
   const disclosureDek = generateDek();
   const plaintext: DisclosurePlaintext = {
+    kind: "transaction",
     parentKey: tx.entityKey,
     grantee: auditor.toLowerCase(),
     auditorLabel,
@@ -463,6 +483,7 @@ export async function createAuditorDisclosure(
     attributes: [
       PROJECT_ATTRIBUTE,
       { key: "entityType", value: ENTITY_TYPES.disclosure },
+      { key: "parentKind", value: PARENT_KINDS.transaction },
       { key: "granteeHash", value: granteeHash(auditor) },
       { key: "parentKeyHash", value: parentKeyHash(tx.entityKey) },
     ],
