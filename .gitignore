@@ -8,3 +8,4 @@ node_modules
 artifacts/foundry
 cache
 out
+tsconfig.tsbuildinfo
