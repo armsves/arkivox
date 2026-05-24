@@ -1,7 +1,13 @@
 {
   "name": "arkivox",
   "version": "0.1.0",
-  "private": true,
+  "description": "Confidential cToken ledger on Arkiv Braga with selective disclosure via iExec Nox",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/armsves/arkivox.git"
+  },
+  "homepage": "https://arkivox.vercel.app",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "next dev",

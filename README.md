@@ -1,96 +1,120 @@
 # Arkivox
 
-**Arkivox** (*Arkiv* + *Nox*) — confidential token ledger with selective disclosure.
+[![CI](https://github.com/armsves/arkivox/actions/workflows/ci.yml/badge.svg)](https://github.com/armsves/arkivox/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Arkiv](https://img.shields.io/badge/ledger-Arkiv%20Braga-6B4EFF)](https://docs.arkiv.network/)
+[![Nox](https://img.shields.io/badge/keys-iExec%20Nox-00D1B2)](https://github.com/iExec-Nox/demo-ctoken)
 
-Record **confidential token transactions** on [Arkiv Braga](https://docs.arkiv.network/) and let a **third party** (auditor, compliance, counterparty) **reveal amounts** via [iExec Nox](https://github.com/iExec-Nox/demo-ctoken) on Arbitrum Sepolia.
+**Live demo:** [arkivox.vercel.app](https://arkivox.vercel.app)
 
-## What it does
+Arkivox (*Arkiv* + *Nox*) is a testnet demo for a **confidential token ledger** with **selective disclosure**. Record transfers on [Arkiv Braga](https://docs.arkiv.network/), protect amounts with [iExec Nox](https://github.com/iExec-Nox/demo-ctoken) on Arbitrum Sepolia, and share exactly one transaction with an auditor — not your full history.
 
-| Who | Sees on Arkiv (public index) | Sees after decrypt |
-|-----|------------------------------|---------------------|
-| **Owner** | `entityType` only (+ block metadata) | Full tx via AES + Nox (Reveal) |
-| **Third party** | `granteeHash` + `parentKeyHash` (no plain addresses) | Grant + amount after Nox + AES |
+## Features
 
-Works with cUSDC / cRLC-style flows from [demo-ctoken](https://github.com/iExec-Nox/demo-ctoken): optionally paste an existing **Nox amount handle** from an on-chain confidential transfer.
+- **Confidential transfers** — AES-encrypted payloads on Arkiv; DEK wrapped in a Nox handle
+- **Public wrap / unwrap** — on-chain cToken ops logged in plaintext (already public on Arbiscan)
+- **Selective disclosure** — grant an auditor wallet access to one transaction’s amount
+- **Revoke** — Arkiv tombstone + app-side block (on-chain `removeViewer` when Nox supports it)
+- **Wallet-first** — MetaMask / WalletConnect via Reown AppKit; Braga + Arbitrum Sepolia in one flow
 
-## Architecture
+## How it works
+
+```mermaid
+flowchart LR
+  subgraph client [Browser]
+    UI[Arkivox UI]
+  end
+  subgraph nox [Arbitrum Sepolia]
+    TEE[Nox TEE handles]
+  end
+  subgraph arkiv [Arkiv Braga]
+    TX[token_transaction]
+    DISC[auditor_disclosure]
+  end
+  UI -->|encrypt DEK / amount| TEE
+  UI -->|ciphertext + metadata| TX
+  UI -->|share grant| DISC
+  TEE -->|viewer ACL| DISC
+```
+
+| Transaction type | On-chain (cToken) | On Arkiv |
+|------------------|-------------------|----------|
+| **Transfer** | Confidential (ERC-7984) | Encrypted (v3) + Nox DEK |
+| **Wrap / unwrap** | Public | Plaintext reference + Arbiscan tx hash |
+
+## Who sees what
+
+| Role | Arkiv index (public) | After reveal |
+|------|----------------------|--------------|
+| **Owner** | Entity type, timestamps | Full amount, memo, counterparty |
+| **Auditor** | Grant / parent hashes only | One shared transaction |
+| **Everyone else** | Same minimal metadata | Nothing |
+
+## Stack
 
 | Layer | Network | Role |
 |-------|---------|------|
-| **Arkiv** | Braga | `token_transaction` + `auditor_disclosure` entities |
-| **Nox** | Arbitrum Sepolia | `encryptInput(amount)` → handle; `addViewer` / `removeViewer` for third party |
+| **Arkiv** | Braga (testnet) | Durable `token_transaction`, `auditor_disclosure`, `auditor_revocation` |
+| **Nox** | Arbitrum Sepolia | TEE key handles, `addViewer` for auditors |
+| **UI** | Next.js 16 | Terminal-style wallet app |
 
-### Entity types
+`PROJECT_ATTRIBUTE`: `project = arkivox-7k2m` (legacy scope `arkiv-vault-nox-demo-7k2m` still indexed)
 
-1. **`token_transaction` (v3)** — public attributes: `entityType` only; AES payload: type, token, counterparty, amount, memo, time; Nox `amountHandle` wraps DEK  
-2. **`auditor_disclosure` (v3)** — public: `granteeHash`, `parentKeyHash`; AES payload: grantee, label, parent key, share handle, metadata  
+## Quick start
 
-Legacy v2 entities (plain attributes) still parse for older records.
-
-### Revoking auditor access
-
-1. **Nox** — `removeViewer(shareAmountHandle, auditor)` when the deployed NoxCompute includes it (see `contracts/reference/ACLRemoveViewer.sol` for the upstream patch).
-2. **Arkiv** — `auditor_revocation` tombstone + delete `auditor_disclosure`.
-
-Until iExec ships `removeViewer` on Sepolia (`0xd464…c229` does not include it yet), revoke still tombstones on Arkiv and blocks decrypt in this app.
-
-`PROJECT_ATTRIBUTE`: `project = arkivox-7k2m` (queries also match legacy `arkiv-vault-nox-demo-7k2m`)
-
-## Prerequisites
-
-- Node.js 18+
-- Wallet funded for the full stack (same as [demo-ctoken](https://github.com/iExec-Nox/demo-ctoken)):
-  1. **Ethereum Sepolia ETH** — [Google Cloud Web3 faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia)
-  2. **Bridge to Arbitrum Sepolia** — [Arbitrum portal](https://portal.arbitrum.io/bridge?sourceChain=sepolia&destinationChain=arbitrum-sepolia)
-  3. **Testnet USDC** (optional, for wrap demos) — [Circle faucet](https://faucet.circle.com/) (select Arbitrum Sepolia)
-  4. **Braga GLM** — [Arkiv faucet](https://braga.hoodi.arkiv.network/faucet/)
-- Optional: Reown project ID for WalletConnect
-
-## Setup
+### Run locally
 
 ```bash
+git clone https://github.com/armsves/arkivox.git
+cd arkivox
 npm install
 cp .env.local.example .env.local
+# optional: NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID from https://cloud.reown.com
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## UI tabs
+### Fund testnet wallets
 
-1. **My ledger** — your `token_transaction` history; reveal amounts; share with third party  
-2. **Record tx** — log transfer / wrap / unwrap with confidential amount  
-3. **Third-party view** — disclosures shared **to your address**; reveal if Nox ACL granted  
+1. **ETH** — [Sepolia faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) → [bridge to Arbitrum Sepolia](https://portal.arbitrum.io/bridge?sourceChain=sepolia&destinationChain=arbitrum-sepolia)
+2. **USDC / RLC** (wrap demos) — [Circle faucet](https://faucet.circle.com/) (Arbitrum Sepolia)
+3. **Braga GLM** — [Arkiv faucet](https://braga.hoodi.arkiv.network/faucet/)
 
-## Node E2E tests
+Use the in-app **Faucets** link for the full list.
 
-| Command | Keys | Covers |
-|---------|------|--------|
-| `npm run test:e2e:smoke` | `OWNER_PRIVATE_KEY` | Record, index, fetch, owner reveal |
-| `npm run test:e2e` | `OWNER` + `GRANTEE_PRIVATE_KEY` | Share, grantee reveal, **revoke**, tombstone |
-| `npm run test:e2e:all` | both | Smoke then full |
+## Environment
 
-```bash
-cp .env.test.example .env
-# fund OWNER (and GRANTEE for full) on Arb Sepolia + Braga
-npm run test:e2e:smoke
-npm run test:e2e
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | Recommended | Reown / WalletConnect project ID |
+| `NEXT_PUBLIC_ARKIV_PROJECT` | No | Override Arkiv `project` attribute (default `arkivox-7k2m`) |
+| `NEXT_PUBLIC_APP_URL` | No | Canonical URL for OG metadata (set on Vercel) |
 
 ## Scripts
 
 ```bash
-npm run dev
-npm run build
-npm run test:e2e
-npm run test:e2e:smoke
-npm run test:e2e:all
+npm run dev          # local dev server
+npm run build        # production build
+npm run lint         # ESLint
+npm run test:e2e:smoke   # 1-key Arkiv + Nox smoke test
+npm run test:e2e         # 2-key share + revoke flow
 ```
+
+E2E tests need funded keys — see `.env.test.example`.
+
+## Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Farmsves%2Farkivox&env=NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID&envDescription=Reown%20project%20ID%20(recommended)&project-name=arkivox)
+
+Set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` in the Vercel project settings for reliable wallet pairing.
 
 ## References
 
-- [Arkiv docs](https://docs.arkiv.network/)
-- [Arkiv skills](https://github.com/Arkiv-Network/skills)
+- [Arkiv documentation](https://docs.arkiv.network/)
 - [iExec Nox demo-ctoken](https://github.com/iExec-Nox/demo-ctoken)
+- [Arkiv agent skills](https://github.com/Arkiv-Network/skills)
 
-MIT
+## License
+
+[MIT](LICENSE)

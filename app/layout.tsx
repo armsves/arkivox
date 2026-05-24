@@ -20,6 +20,28 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: BRAND.title,
   description: BRAND.appKitDescription,
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://arkivox.vercel.app",
+  ),
+  openGraph: {
+    title: BRAND.title,
+    description: BRAND.tagline,
+    siteName: BRAND.name,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: BRAND.title,
+    description: BRAND.tagline,
+  },
+  keywords: [
+    "Arkiv",
+    "iExec Nox",
+    "confidential tokens",
+    "selective disclosure",
+    "Arbitrum Sepolia",
+    "ERC-7984",
+  ],
 };
 
 export default async function RootLayout({
