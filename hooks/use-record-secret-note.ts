@@ -10,7 +10,10 @@ import {
   getArkivWalletClientForBraga,
   getHandleClientForNox,
 } from "@/lib/wallet-clients";
-import { recordSecretNote } from "@/lib/secret-note-operations";
+import {
+  prepareSecretNoteEncryption,
+  publishSecretNote,
+} from "@/lib/secret-note-operations";
 import { setSessionDek } from "@/lib/session-dek-store";
 
 export type EncryptStep = "idle" | "nox" | "arkiv" | "done" | "error";
@@ -31,17 +34,17 @@ export function useRecordSecretNote() {
         });
         if (!ownerViem) throw new Error("Connect wallet on Arbitrum Sepolia");
         const ownerHandle = await getHandleClientForNox();
+        // Nox gateway only accepts Arbitrum Sepolia — encrypt before switching chains.
+        const prepared = await prepareSecretNoteEncryption(ownerHandle, input);
 
         setStep("arkiv");
         await switchChainAsync({ chainId: bragaChain.id });
         const ownerArkiv = await getArkivWalletClientForBraga();
         if (!ownerArkiv) throw new Error("Connect wallet on Arkiv Braga");
 
-        const { entityKey, sessionDek } = await recordSecretNote(
+        const { entityKey, sessionDek } = await publishSecretNote(
           ownerArkiv,
-          ownerHandle,
-          input,
-          { viem: ownerViem },
+          prepared,
         );
         setSessionDek(entityKey, sessionDek);
         setStep("done");

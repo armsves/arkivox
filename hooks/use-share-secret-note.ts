@@ -12,7 +12,10 @@ import {
 } from "@/lib/wallet-clients";
 import { wagmiConfig } from "@/lib/wagmi";
 import { getWalletClient } from "@wagmi/core";
-import { shareSecretNoteWithAuditor } from "@/lib/secret-note-operations";
+import {
+  prepareShareSecretNote,
+  publishShareSecretNote,
+} from "@/lib/secret-note-operations";
 import { getSessionDek } from "@/lib/session-dek-store";
 import { setRevokeContext } from "@/lib/session-revoke-store";
 
@@ -43,14 +46,8 @@ export function useShareSecretNote() {
         });
         if (!ownerViem) throw new Error("Connect wallet on Arbitrum Sepolia");
         const handleClient = await getHandleClientForNox();
-
-        setStep("arkiv");
-        await switchChainAsync({ chainId: bragaChain.id });
-        const ownerArkiv = await getArkivWalletClientForBraga();
-
-        const result = await shareSecretNoteWithAuditor(
+        const prepared = await prepareShareSecretNote(
           ownerViem,
-          ownerArkiv,
           handleClient,
           note,
           recipient,
@@ -58,6 +55,16 @@ export function useShareSecretNote() {
             auditorLabel: recipientLabel ?? "Recipient",
             sessionDek: getSessionDek(note.entityKey),
           },
+        );
+
+        setStep("arkiv");
+        await switchChainAsync({ chainId: bragaChain.id });
+        const ownerArkiv = await getArkivWalletClientForBraga();
+
+        const result = await publishShareSecretNote(
+          ownerViem,
+          ownerArkiv,
+          prepared,
         );
         setRevokeContext(result.disclosureEntityKey, result.revokeContext);
         setStep("done");

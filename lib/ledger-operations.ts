@@ -144,6 +144,120 @@ async function unwrapDekFromHandle(
   );
 }
 
+/** Nox encrypt — must run while the wallet is on Arbitrum Sepolia. */
+export type PreparedConfidentialTransaction = {
+  sessionDek: Uint8Array;
+  plaintext: TransactionPlaintext;
+  outerPayload: {
+    v: 3;
+    amountHandle: `0x${string}`;
+    wrap: "dek" | "amount";
+    ciphertext: string;
+    iv: string;
+    alg: "AES-256-GCM";
+  };
+};
+
+export async function prepareConfidentialTransaction(
+  ownerHandle: HandleClient,
+  input: RecordTransactionInput,
+): Promise<PreparedConfidentialTransaction> {
+  const amountRaw = parseAmountForToken(input.amount, input.token);
+  const memo = input.memo?.trim() ?? "";
+  const created = Date.now();
+
+  const plaintext: TransactionPlaintext = {
+    txType: input.txType,
+    token: input.token,
+    counterparty: input.counterparty.toLowerCase(),
+    amount: input.amount.trim(),
+    amountRaw: amountRaw.toString(),
+    memo,
+    created,
+    noxTxHash: input.noxTxHash ?? null,
+  };
+
+  const sessionDek = generateDek();
+  const { ciphertext, iv } = await encryptJson(plaintext, sessionDek);
+
+  let amountHandle: `0x${string}`;
+  let wrap: "dek" | "amount";
+
+  if (input.existingAmountHandle) {
+    amountHandle = input.existingAmountHandle;
+    wrap = "amount";
+  } else {
+    const { handle: dekHandle } = await ownerHandle.encryptInput(
+      dekToUint256(sessionDek),
+      "uint256",
+      NOX_COMPUTE_ADDRESS,
+    );
+    amountHandle = dekHandle as `0x${string}`;
+    wrap = "dek";
+  }
+
+  return {
+    sessionDek,
+    plaintext,
+    outerPayload: {
+      v: 3,
+      amountHandle,
+      wrap,
+      ciphertext,
+      iv,
+      alg: "AES-256-GCM",
+    },
+  };
+}
+
+export async function publishConfidentialTransaction(
+  ownerArkiv: ArkivWalletClient,
+  prepared: PreparedConfidentialTransaction,
+): Promise<{
+  entityKey: string;
+  transaction: TokenTransactionView;
+  sessionDek: Uint8Array;
+}> {
+  const ownerAddress = ownerArkiv.account?.address;
+  if (!ownerAddress) throw new Error("Arkiv wallet has no account");
+
+  const { plaintext, outerPayload, sessionDek } = prepared;
+  const contentHash = await sha256Hex(JSON.stringify(outerPayload));
+
+  const { entityKey } = await ownerArkiv.createEntity({
+    payload: jsonToPayload(outerPayload),
+    contentType: "application/json",
+    attributes: [
+      PROJECT_ATTRIBUTE,
+      { key: "entityType", value: ENTITY_TYPES.transaction },
+    ],
+    expiresIn: ENTITY_EXPIRES_IN,
+  });
+
+  const transaction: TokenTransactionView = {
+    entityKey,
+    txType: plaintext.txType,
+    token: plaintext.token,
+    counterparty: plaintext.counterparty,
+    owner: ownerAddress,
+    createdAt: plaintext.created,
+    noxTxHash: plaintext.noxTxHash,
+    contentHash,
+    memo: plaintext.memo,
+    payload: {
+      v: 3,
+      amountHandle: outerPayload.amountHandle,
+      wrap: outerPayload.wrap,
+      ciphertext: outerPayload.ciphertext,
+      iv: outerPayload.iv,
+      alg: "AES-256-GCM",
+    },
+    isPrivate: true,
+  };
+
+  return { entityKey, transaction, sessionDek };
+}
+
 export async function recordTokenTransaction(
   ownerArkiv: ArkivWalletClient,
   input: RecordTransactionInput,
@@ -214,82 +328,9 @@ export async function recordTokenTransaction(
     throw new Error("Arbitrum Sepolia wallet required for confidential transfers");
   }
 
-  const { viem: ownerViem, handle: ownerHandle } = nox;
-
-  const plaintext: TransactionPlaintext = {
-    txType: input.txType,
-    token: input.token,
-    counterparty: input.counterparty.toLowerCase(),
-    amount: input.amount.trim(),
-    amountRaw: amountRaw.toString(),
-    memo,
-    created,
-    noxTxHash: input.noxTxHash ?? null,
-  };
-
-  const sessionDek = generateDek();
-  const { ciphertext, iv } = await encryptJson(plaintext, sessionDek);
-
-  let amountHandle: `0x${string}`;
-  let wrap: "dek" | "amount";
-
-  if (input.existingAmountHandle) {
-    amountHandle = input.existingAmountHandle;
-    wrap = "amount";
-    void ownerViem;
-  } else {
-    const { handle: dekHandle } = await ownerHandle.encryptInput(
-      dekToUint256(sessionDek),
-      "uint256",
-      NOX_COMPUTE_ADDRESS,
-    );
-    amountHandle = dekHandle as `0x${string}`;
-    wrap = "dek";
-    void ownerViem;
-  }
-
-  const outerPayload = {
-    v: 3 as const,
-    amountHandle,
-    wrap,
-    ciphertext,
-    iv,
-    alg: "AES-256-GCM" as const,
-  };
-  const contentHash = await sha256Hex(JSON.stringify(outerPayload));
-
-  const { entityKey } = await ownerArkiv.createEntity({
-    payload: jsonToPayload(outerPayload),
-    contentType: "application/json",
-    attributes: [
-      PROJECT_ATTRIBUTE,
-      { key: "entityType", value: ENTITY_TYPES.transaction },
-    ],
-    expiresIn: ENTITY_EXPIRES_IN,
-  });
-
-  const transaction: TokenTransactionView = {
-    entityKey,
-    txType: input.txType,
-    token: input.token,
-    counterparty: input.counterparty.toLowerCase(),
-    owner: ownerAddress,
-    createdAt: created,
-    noxTxHash: input.noxTxHash ?? null,
-    contentHash,
-    memo,
-    payload: {
-      v: 3,
-      amountHandle,
-      wrap,
-      ciphertext,
-      iv,
-      alg: "AES-256-GCM",
-    },
-    isPrivate: true,
-  };
-
-  return { entityKey, transaction, sessionDek };
+  void nox.viem;
+  const prepared = await prepareConfidentialTransaction(nox.handle, input);
+  return publishConfidentialTransaction(ownerArkiv, prepared);
 }
 
 export async function decryptWithSessionDek(

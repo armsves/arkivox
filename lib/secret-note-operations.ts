@@ -43,24 +43,29 @@ export interface RecordSecretNoteInput {
   label?: string;
 }
 
-export async function recordSecretNote(
-  ownerArkiv: ArkivWalletClient,
+/** Nox encrypt — must run while the wallet is on Arbitrum Sepolia. */
+export type PreparedSecretNote = {
+  title: string;
+  label: string;
+  created: number;
+  sessionDek: Uint8Array;
+  outerPayload: {
+    v: 3;
+    title: string;
+    label: string;
+    created: number;
+    amountHandle: `0x${string}`;
+    wrap: "dek";
+    ciphertext: string;
+    iv: string;
+    alg: "AES-256-GCM";
+  };
+};
+
+export async function prepareSecretNoteEncryption(
   ownerHandle: HandleClient,
   input: RecordSecretNoteInput,
-  nox?: { viem: WalletClient },
-): Promise<{
-  entityKey: string;
-  note: SecretNoteView;
-  sessionDek: Uint8Array;
-}> {
-  const ownerAddress = ownerArkiv.account?.address;
-  if (!ownerAddress) throw new Error("Arkiv wallet has no account");
-  if (!nox) {
-    throw new Error("Arbitrum Sepolia wallet required to encrypt with Nox");
-  }
-
-  void nox.viem;
-
+): Promise<PreparedSecretNote> {
   const title = input.title.trim() || "Untitled note";
   const body = input.body.trim();
   if (!body) throw new Error("Note body cannot be empty");
@@ -83,21 +88,40 @@ export async function recordSecretNote(
   );
   const amountHandle = dekHandle as `0x${string}`;
 
-  const outerPayload = {
-    v: 3 as const,
+  return {
     title,
     label: plaintext.label,
     created,
-    amountHandle,
-    wrap: "dek" as const,
-    ciphertext,
-    iv,
-    alg: "AES-256-GCM" as const,
+    sessionDek,
+    outerPayload: {
+      v: 3,
+      title,
+      label: plaintext.label,
+      created,
+      amountHandle,
+      wrap: "dek",
+      ciphertext,
+      iv,
+      alg: "AES-256-GCM",
+    },
   };
-  const contentHash = await sha256Hex(JSON.stringify(outerPayload));
+}
+
+export async function publishSecretNote(
+  ownerArkiv: ArkivWalletClient,
+  prepared: PreparedSecretNote,
+): Promise<{
+  entityKey: string;
+  note: SecretNoteView;
+  sessionDek: Uint8Array;
+}> {
+  const ownerAddress = ownerArkiv.account?.address;
+  if (!ownerAddress) throw new Error("Arkiv wallet has no account");
+
+  void sha256Hex(JSON.stringify(prepared.outerPayload));
 
   const { entityKey } = await ownerArkiv.createEntity({
-    payload: jsonToPayload(outerPayload),
+    payload: jsonToPayload(prepared.outerPayload),
     contentType: "application/json",
     attributes: [
       PROJECT_ATTRIBUTE,
@@ -106,12 +130,13 @@ export async function recordSecretNote(
     expiresIn: ENTITY_EXPIRES_IN,
   });
 
+  const { amountHandle, ciphertext, iv } = prepared.outerPayload;
   const note: SecretNoteView = {
     entityKey,
-    title,
-    label: plaintext.label,
+    title: prepared.title,
+    label: prepared.label,
     owner: ownerAddress,
-    createdAt: created,
+    createdAt: prepared.created,
     payload: {
       v: 3,
       amountHandle,
@@ -123,8 +148,25 @@ export async function recordSecretNote(
     isPrivate: true,
   };
 
-  void contentHash;
-  return { entityKey, note, sessionDek };
+  return { entityKey, note, sessionDek: prepared.sessionDek };
+}
+
+export async function recordSecretNote(
+  ownerArkiv: ArkivWalletClient,
+  ownerHandle: HandleClient,
+  input: RecordSecretNoteInput,
+  nox?: { viem: WalletClient },
+): Promise<{
+  entityKey: string;
+  note: SecretNoteView;
+  sessionDek: Uint8Array;
+}> {
+  if (!nox) {
+    throw new Error("Arbitrum Sepolia wallet required to encrypt with Nox");
+  }
+  void nox.viem;
+  const prepared = await prepareSecretNoteEncryption(ownerHandle, input);
+  return publishSecretNote(ownerArkiv, prepared);
 }
 
 export async function decryptSecretNoteWithSessionDek(
@@ -169,68 +211,26 @@ export async function decryptSecretNoteSecret(
   return decryptSecretNoteWithSessionDek(note, dek);
 }
 
-async function createSecretNoteDisclosure(
-  ownerViem: WalletClient,
-  ownerArkiv: ArkivWalletClient,
-  ownerHandle: HandleClient,
-  note: SecretNoteView,
-  auditor: `0x${string}`,
-  auditorLabel: string,
-  shareHandle: `0x${string}`,
-  notePlain?: SecretNotePlaintext,
-): Promise<{ entityKey: `0x${string}`; disclosureDek: Uint8Array }> {
-  const disclosureDek = generateDek();
-  const plaintext: DisclosurePlaintext = {
-    kind: "secret_note",
-    parentKey: note.entityKey,
-    grantee: auditor.toLowerCase(),
-    auditorLabel,
-    amountHandle: shareHandle,
-    noteTitle: notePlain?.title ?? note.title,
-    txType: "transfer",
-    token: "—",
-    counterparty: "",
+export type PreparedSecretNoteShare = {
+  shareHandle: `0x${string}`;
+  noxAclGranted: boolean;
+  parentKey: string;
+  auditor: `0x${string}`;
+  disclosureDek: Uint8Array;
+  disclosureHandle: `0x${string}`;
+  entityPayload: {
+    v: 3;
+    amountHandle: `0x${string}`;
+    wrap: "dek";
+    ciphertext: string;
+    iv: string;
+    alg: "AES-256-GCM";
   };
-  const { ciphertext, iv } = await encryptJson(plaintext, disclosureDek);
-  const { handle: dekHandle } = await ownerHandle.encryptInput(
-    dekToUint256(disclosureDek),
-    "uint256",
-    NOX_COMPUTE_ADDRESS,
-  );
-  const disclosureHandle = dekHandle as `0x${string}`;
+  entityAttributes: { key: string; value: string }[];
+};
 
-  const { entityKey } = await ownerArkiv.createEntity({
-    payload: jsonToPayload({
-      v: 3,
-      amountHandle: disclosureHandle,
-      wrap: "dek" as const,
-      ciphertext,
-      iv,
-      alg: "AES-256-GCM" as const,
-    }),
-    contentType: "application/json",
-    attributes: [
-      PROJECT_ATTRIBUTE,
-      { key: "entityType", value: ENTITY_TYPES.disclosure },
-      { key: "parentKind", value: PARENT_KINDS.note },
-      { key: "granteeHash", value: granteeHash(auditor) },
-      { key: "parentKeyHash", value: parentKeyHash(note.entityKey) },
-    ],
-    expiresIn: ENTITY_EXPIRES_IN,
-  });
-
-  try {
-    await grantNoxViewer(ownerViem, disclosureHandle, auditor);
-  } catch {
-    /* optional */
-  }
-
-  return { entityKey: entityKey as `0x${string}`, disclosureDek };
-}
-
-export async function shareSecretNoteWithAuditor(
+export async function prepareShareSecretNote(
   ownerViem: WalletClient,
-  ownerArkiv: ArkivWalletClient,
   ownerHandle: HandleClient,
   note: SecretNoteView,
   auditor: `0x${string}`,
@@ -238,7 +238,7 @@ export async function shareSecretNoteWithAuditor(
     auditorLabel?: string;
     sessionDek?: Uint8Array;
   },
-): Promise<ShareSecretNoteResult> {
+): Promise<PreparedSecretNoteShare> {
   const shareHandle = note.payload.amountHandle;
   let notePlain: SecretNotePlaintext | undefined;
 
@@ -258,29 +258,100 @@ export async function shareSecretNoteWithAuditor(
     /* encrypt-only handles may not allow addViewer */
   }
 
-  const { entityKey: disclosureEntityKey, disclosureDek } =
-    await createSecretNoteDisclosure(
-      ownerViem,
-      ownerArkiv,
-      ownerHandle,
-      note,
-      auditor,
-      options?.auditorLabel ?? "Recipient",
-      shareHandle,
-      notePlain,
-    );
+  const disclosureDek = generateDek();
+  const plaintext: DisclosurePlaintext = {
+    kind: "secret_note",
+    parentKey: note.entityKey,
+    grantee: auditor.toLowerCase(),
+    auditorLabel: options?.auditorLabel ?? "Recipient",
+    amountHandle: shareHandle,
+    noteTitle: notePlain?.title ?? note.title,
+    txType: "transfer",
+    token: "—",
+    counterparty: "",
+  };
+  const { ciphertext, iv } = await encryptJson(plaintext, disclosureDek);
+  const { handle: dekHandle } = await ownerHandle.encryptInput(
+    dekToUint256(disclosureDek),
+    "uint256",
+    NOX_COMPUTE_ADDRESS,
+  );
+  const disclosureHandle = dekHandle as `0x${string}`;
 
   return {
-    amountHandle: shareHandle,
+    shareHandle,
     noxAclGranted,
-    disclosureEntityKey,
+    parentKey: note.entityKey,
+    auditor,
+    disclosureDek,
+    disclosureHandle,
+    entityPayload: {
+      v: 3,
+      amountHandle: disclosureHandle,
+      wrap: "dek",
+      ciphertext,
+      iv,
+      alg: "AES-256-GCM",
+    },
+    entityAttributes: [
+      { key: "entityType", value: ENTITY_TYPES.disclosure },
+      { key: "parentKind", value: PARENT_KINDS.note },
+      { key: "granteeHash", value: granteeHash(auditor) },
+      { key: "parentKeyHash", value: parentKeyHash(note.entityKey) },
+    ],
+  };
+}
+
+export async function publishShareSecretNote(
+  ownerViem: WalletClient,
+  ownerArkiv: ArkivWalletClient,
+  prepared: PreparedSecretNoteShare,
+): Promise<ShareSecretNoteResult> {
+  const { entityKey } = await ownerArkiv.createEntity({
+    payload: jsonToPayload(prepared.entityPayload),
+    contentType: "application/json",
+    attributes: [PROJECT_ATTRIBUTE, ...prepared.entityAttributes],
+    expiresIn: ENTITY_EXPIRES_IN,
+  });
+
+  try {
+    await grantNoxViewer(ownerViem, prepared.disclosureHandle, prepared.auditor);
+  } catch {
+    /* optional */
+  }
+
+  return {
+    amountHandle: prepared.shareHandle,
+    noxAclGranted: prepared.noxAclGranted,
+    disclosureEntityKey: entityKey,
     revokeContext: {
-      grantee: auditor,
-      shareHandle,
-      parentKey: note.entityKey,
-      disclosureDek,
+      grantee: prepared.auditor,
+      shareHandle: prepared.shareHandle,
+      parentKey: prepared.parentKey,
+      disclosureDek: prepared.disclosureDek,
     },
   };
+}
+
+export async function shareSecretNoteWithAuditor(
+  ownerViem: WalletClient,
+  ownerArkiv: ArkivWalletClient,
+  ownerHandle: HandleClient,
+  note: SecretNoteView,
+  auditor: `0x${string}`,
+  options?: {
+    auditorLabel?: string;
+    sessionDek?: Uint8Array;
+  },
+): Promise<ShareSecretNoteResult> {
+  const prepared = await prepareShareSecretNote(
+    ownerViem,
+    ownerHandle,
+    note,
+    auditor,
+    options,
+  );
+  return publishShareSecretNote(ownerViem, ownerArkiv, prepared);
 }
 
 export async function decryptSharedSecretNote(

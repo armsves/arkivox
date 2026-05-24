@@ -13,6 +13,8 @@ import {
   getHandleClientForNox,
 } from "@/lib/wallet-clients";
 import {
+  prepareConfidentialTransaction,
+  publishConfidentialTransaction,
   recordTokenTransaction,
   type RecordTransactionInput,
 } from "@/lib/ledger-operations";
@@ -52,7 +54,7 @@ export function useRecordTransaction() {
         };
 
         const confidential = isConfidentialTxType(input.txType);
-        let nox;
+        let prepared;
 
         if (confidential) {
           setStep("nox");
@@ -61,7 +63,8 @@ export function useRecordTransaction() {
             chainId: arbitrumSepolia.id,
           });
           if (!ownerViem) throw new Error("Connect wallet on Arbitrum Sepolia");
-          nox = { viem: ownerViem, handle: await getHandleClientForNox() };
+          const handle = await getHandleClientForNox();
+          prepared = await prepareConfidentialTransaction(handle, params);
         }
 
         setStep("arkiv");
@@ -69,11 +72,19 @@ export function useRecordTransaction() {
         const arkivWallet = await getArkivWalletClientForBraga();
         if (!arkivWallet) throw new Error("Connect wallet on Arkiv Braga");
 
-        const { entityKey, sessionDek } = await recordTokenTransaction(
-          arkivWallet,
-          params,
-          nox,
-        );
+        let entityKey: string;
+        let sessionDek: Uint8Array | undefined;
+
+        if (prepared) {
+          const result = await publishConfidentialTransaction(arkivWallet, prepared);
+          entityKey = result.entityKey;
+          sessionDek = result.sessionDek;
+        } else {
+          const result = await recordTokenTransaction(arkivWallet, params);
+          entityKey = result.entityKey;
+          sessionDek = result.sessionDek;
+        }
+
         if (sessionDek) setSessionDek(entityKey, sessionDek);
 
         setStep("done");
