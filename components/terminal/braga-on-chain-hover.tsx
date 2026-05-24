@@ -158,7 +158,7 @@ export function secretNoteOnChainPanel(note: SecretNoteView) {
       title="Braga storage"
       rows={rows}
       footnote={
-        "Title/label may appear in the JSON payload on Braga. Body text is only in ciphertext — use Reveal + Nox to read it. Publishing uses 0 GLM value to the Arkiv system contract; GLM gas pays for storage."
+        "Title/label may appear in the JSON payload on Braga. Body text is only in ciphertext — use Reveal + Nox to read it."
       }
     />
   );

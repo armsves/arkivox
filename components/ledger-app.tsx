@@ -310,6 +310,23 @@ export function LedgerApp() {
           <div
             className={`fixed left-0 z-40 flex h-8 w-full items-center justify-center gap-3 border-t border-outline-variant bg-surface-container ${connected ? "bottom-20" : "bottom-0 pb-safe"}`}
           >
+            <a
+              href={BRAGA_EXPLORER}
+              target="_blank"
+              rel="noreferrer"
+              className="font-label-sm text-primary-container normal-case hover:underline"
+            >
+              Arkiv explorer ↗
+            </a>
+            <a
+              href={ARBITRUM_SEPOLIA_EXPLORER}
+              target="_blank"
+              rel="noreferrer"
+              className="font-label-sm text-primary-container normal-case hover:underline"
+            >
+              Arbiscan ↗
+            </a>
+            <span className="text-outline">·</span>
             <button
               type="button"
               onClick={() => setFaucetsOpen(true)}
@@ -523,16 +540,6 @@ export function LedgerApp() {
             />
           )}
 
-          <footer className="mt-12 border-t border-outline-variant pt-6">
-            <div className="flex flex-wrap gap-x-4 gap-y-2 font-label-sm normal-case text-primary-container">
-              <a href={BRAGA_EXPLORER} target="_blank" rel="noreferrer">
-                Arkiv explorer ↗
-              </a>
-              <a href={ARBITRUM_SEPOLIA_EXPLORER} target="_blank" rel="noreferrer">
-                Arbiscan ↗
-              </a>
-            </div>
-          </footer>
         </>
       )}
     </AppShell>
