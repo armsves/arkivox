@@ -3,6 +3,7 @@
 import type { AuditorDisclosureView, TokenTransactionView } from "@/lib/types";
 import type { DecryptedTransaction } from "@/lib/types";
 import { isConfidentialTxType, type TxType } from "@/lib/arkiv";
+import { BragaOnChainHover, transactionOnChainPanel } from "./braga-on-chain-hover";
 import { PrivacyBadge } from "./privacy-badge";
 
 function truncate(addr: string) {
@@ -74,11 +75,21 @@ export function LedgerCard({
             TOKEN:{" "}
             <span className="text-on-surface">{show ? show.token : "••••"}</span>
           </div>
-          {show && (
-            <div className="mt-1 font-label-sm text-on-surface-variant normal-case">
-              CP: {truncate(show.counterparty)}
-            </div>
-          )}
+          <div className="mt-1 font-label-sm text-on-surface-variant normal-case">
+            Braga{" "}
+            <BragaOnChainHover
+              panel={transactionOnChainPanel(tx)}
+              label="Braga on-chain info"
+            >
+              {truncateKey(tx.entityKey)}
+            </BragaOnChainHover>
+            {show && (
+              <>
+                {" "}
+                · CP {truncate(show.counterparty)}
+              </>
+            )}
+          </div>
         </div>
         <div className="text-right">
           {displayAmount ? (
@@ -89,12 +100,7 @@ export function LedgerCard({
               <div className="font-label-sm text-on-surface-variant">Amount</div>
             </>
           ) : (
-            <>
-              <div className="font-label-sm text-on-surface-variant">TXID_HASH</div>
-              <div className="font-label-md text-on-surface">
-                {truncateKey(tx.entityKey)}
-              </div>
-            </>
+            <div className="font-label-sm text-on-surface-variant">Encrypted</div>
           )}
         </div>
       </div>

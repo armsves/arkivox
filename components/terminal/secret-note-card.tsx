@@ -1,7 +1,7 @@
 "use client";
 
 import type { AuditorDisclosureView, DecryptedSecretNote, SecretNoteView } from "@/lib/types";
-import { BRAGA_EXPLORER } from "@/lib/arkiv";
+import { BragaOnChainHover, secretNoteOnChainPanel } from "./braga-on-chain-hover";
 import { PrivacyBadge } from "./privacy-badge";
 import { IconLock, IconLockOpen } from "./icons";
 
@@ -49,16 +49,11 @@ export function SecretNoteCard({
               LABEL: <span className="text-on-surface">{note.label}</span>
             </div>
           )}
-          <div className="mt-1 space-y-1 font-label-sm text-on-surface-variant normal-case">
-            <div>KEY: {truncateKey(note.entityKey)}</div>
-            <a
-              href={`${BRAGA_EXPLORER}/entity/${note.entityKey}?tab=payload`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block text-primary-container hover:underline"
-            >
-              View on Braga explorer ↗
-            </a>
+          <div className="mt-1 font-label-sm text-on-surface-variant normal-case">
+            KEY:{" "}
+            <BragaOnChainHover panel={secretNoteOnChainPanel(note)} label="Braga on-chain info">
+              {truncateKey(note.entityKey)}
+            </BragaOnChainHover>
           </div>
         </div>
         <span className="text-primary-container">
