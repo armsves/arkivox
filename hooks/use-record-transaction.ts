@@ -22,7 +22,11 @@ import { confidentialTransferOnChain } from "@/lib/ctoken-onchain";
 import { setSessionDek } from "@/lib/session-dek-store";
 import { formatArkivError } from "@/lib/arkiv-errors";
 import { assertBragaFunded } from "@/lib/braga-preflight";
-import { commitArkivEncryptionKeyHandle } from "@/lib/handle-registry";
+import {
+  arkivEncryptionKeyHandle,
+  commitArkivEncryptionKeyHandle,
+} from "@/lib/handle-registry";
+import { registerNoxDekHandleForOwner } from "@/lib/nox-handle-acl";
 
 export type RecordStep =
   | "idle"
@@ -105,6 +109,14 @@ export function useRecordTransaction() {
           prepared = await prepareConfidentialTransaction(handle, params);
 
           setStep("sepolia-registry");
+          const dekHandle = arkivEncryptionKeyHandle(prepared.outerPayload);
+          await registerNoxDekHandleForOwner(
+            ownerViem,
+            publicClient,
+            ownerViem.account.address,
+            dekHandle,
+            prepared.dekHandleProof,
+          );
           await commitArkivEncryptionKeyHandle(
             ownerViem,
             publicClient,

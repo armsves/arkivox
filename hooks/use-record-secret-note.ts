@@ -18,6 +18,7 @@ import { setSessionDek } from "@/lib/session-dek-store";
 import { formatArkivError } from "@/lib/arkiv-errors";
 import { assertBragaFunded } from "@/lib/braga-preflight";
 import { commitArkivEncryptionKeyHandle } from "@/lib/handle-registry";
+import { registerNoxDekHandleForOwner } from "@/lib/nox-handle-acl";
 
 export type EncryptStep = "idle" | "nox" | "sepolia" | "arkiv" | "done" | "error";
 
@@ -38,11 +39,19 @@ export function useRecordSecretNote() {
         });
         if (!ownerViem) throw new Error("Connect wallet on Arbitrum Sepolia");
         const ownerHandle = await getHandleClientForNox();
+        const owner = ownerViem.account.address;
         // Nox gateway only accepts Arbitrum Sepolia — encrypt before switching chains.
         const prepared = await prepareSecretNoteEncryption(ownerHandle, input);
 
         setStep("sepolia");
         if (!publicClient) throw new Error("Arbitrum Sepolia RPC unavailable");
+        await registerNoxDekHandleForOwner(
+          ownerViem,
+          publicClient,
+          owner,
+          prepared.outerPayload.amountHandle,
+          prepared.handleProof,
+        );
         await commitArkivEncryptionKeyHandle(
           ownerViem,
           publicClient,
@@ -53,9 +62,9 @@ export function useRecordSecretNote() {
         setStep("arkiv");
         await switchChainAsync({ chainId: bragaChain.id });
         const ownerArkiv = await getArkivWalletClientForBraga();
-        const owner = ownerArkiv.account?.address;
-        if (!owner) throw new Error("Connect wallet on Arkiv Braga");
-        await assertBragaFunded(owner);
+        const bragaOwner = ownerArkiv.account?.address;
+        if (!bragaOwner) throw new Error("Connect wallet on Arkiv Braga");
+        await assertBragaFunded(bragaOwner);
 
         const { entityKey, sessionDek } = await publishSecretNote(
           ownerArkiv,

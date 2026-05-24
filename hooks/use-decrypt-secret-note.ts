@@ -7,8 +7,11 @@ import type { DecryptedSecretNote, SecretNoteView } from "@/lib/types";
 import { getHandleClientForNox } from "@/lib/wallet-clients";
 import { decryptSecretNoteSecret } from "@/lib/secret-note-operations";
 import { getSessionDek } from "@/lib/session-dek-store";
+import { isNoxViewer } from "@/lib/nox-acl";
+import { useAccount } from "wagmi";
 
 export function useDecryptSecretNote() {
+  const { address } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const [revealed, setRevealed] = useState<Record<string, DecryptedSecretNote>>(
     {},
@@ -27,6 +30,15 @@ export function useDecryptSecretNote() {
           setRevealed((prev) => ({ ...prev, [note.entityKey]: data }));
           return;
         }
+        const viewer = (address ?? note.owner) as `0x${string}` | undefined;
+        if (viewer) {
+          const allowed = await isNoxViewer(note.payload.amountHandle, viewer);
+          if (!allowed) {
+            throw new Error(
+              "This note’s Nox key was never registered on Sepolia (older notes). Save a new note after updating, or reveal in the same browser right after encrypting.",
+            );
+          }
+        }
         await switchChainAsync({ chainId: arbitrumSepolia.id });
         const handleClient = await getHandleClientForNox();
         const data = await decryptSecretNoteSecret(handleClient, note);
@@ -37,7 +49,7 @@ export function useDecryptSecretNote() {
         setBusyKey(null);
       }
     },
-    [switchChainAsync],
+    [address, switchChainAsync],
   );
 
   return { revealed, busyKey, error, reveal };

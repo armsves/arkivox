@@ -20,7 +20,8 @@ import {
   type SecretNotePlaintext,
 } from "@/lib/ledger-secrets";
 import { grantNoxViewer } from "@/lib/nox-acl";
-import { NOX_COMPUTE_ADDRESS } from "@/lib/nox";
+import { noxApplicationContractForDek } from "@/lib/nox-handle-acl";
+import type { Hex } from "viem";
 import type { ArkivWalletClient } from "@/lib/ledger-operations";
 import type { DecryptedSecretNote, SecretNoteView } from "@/lib/types";
 import { fetchSecretNoteByKey } from "@/lib/secret-note-queries";
@@ -51,6 +52,7 @@ export type PreparedSecretNote = {
   label: string;
   created: number;
   sessionDek: Uint8Array;
+  handleProof: Hex;
   outerPayload: {
     v: 3;
     title: string;
@@ -83,10 +85,11 @@ export async function prepareSecretNoteEncryption(
   const sessionDek = generateDek();
   const { ciphertext, iv } = await encryptJson(plaintext, sessionDek);
 
-  const { handle: dekHandle } = await ownerHandle.encryptInput(
+  const app = noxApplicationContractForDek();
+  const { handle: dekHandle, handleProof } = await ownerHandle.encryptInput(
     dekToUint256(sessionDek),
     "uint256",
-    NOX_COMPUTE_ADDRESS,
+    app,
   );
   const amountHandle = dekHandle as `0x${string}`;
 
@@ -95,6 +98,7 @@ export async function prepareSecretNoteEncryption(
     label: plaintext.label,
     created,
     sessionDek,
+    handleProof: handleProof as Hex,
     outerPayload: {
       v: 3,
       title,
@@ -172,6 +176,8 @@ export async function recordSecretNote(
     throw new Error("Arbitrum Sepolia wallet required to encrypt with Nox");
   }
   void nox.viem;
+  const owner = ownerArkiv.account?.address;
+  if (!owner) throw new Error("Arkiv wallet has no account");
   const prepared = await prepareSecretNoteEncryption(ownerHandle, input);
   return publishSecretNote(ownerArkiv, prepared);
 }
@@ -281,7 +287,7 @@ export async function prepareShareSecretNote(
   const { handle: dekHandle } = await ownerHandle.encryptInput(
     dekToUint256(disclosureDek),
     "uint256",
-    NOX_COMPUTE_ADDRESS,
+    noxApplicationContractForDek(),
   );
   const disclosureHandle = dekHandle as `0x${string}`;
 

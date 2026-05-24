@@ -39,6 +39,7 @@ import {
 } from "@/lib/crypto";
 import { arkivEncryptionKeyHandle } from "@/lib/handle-registry";
 import { NOX_COMPUTE_ADDRESS, TEE_COOLDOWN_MS } from "@/lib/nox";
+import { noxApplicationContractForDek } from "@/lib/nox-handle-acl";
 import {
   grantNoxViewer,
   isNoxViewer,
@@ -149,6 +150,7 @@ async function unwrapDekFromHandle(
 /** Nox encrypt — must run while the wallet is on Arbitrum Sepolia. */
 export type PreparedConfidentialTransaction = {
   sessionDek: Uint8Array;
+  dekHandleProof: Hex;
   plaintext: TransactionPlaintext;
   outerPayload: {
     v: 3;
@@ -187,10 +189,10 @@ export async function prepareConfidentialTransaction(
   let wrap: "dek" | "amount";
   let dekHandle: `0x${string}` | undefined;
 
-  const { handle: noxDekHandle } = await ownerHandle.encryptInput(
+  const { handle: noxDekHandle, handleProof } = await ownerHandle.encryptInput(
     dekToUint256(sessionDek),
     "uint256",
-    NOX_COMPUTE_ADDRESS,
+    noxApplicationContractForDek(),
   );
   const encryptionKeyHandle = noxDekHandle as `0x${string}`;
 
@@ -205,6 +207,7 @@ export async function prepareConfidentialTransaction(
 
   return {
     sessionDek,
+    dekHandleProof: handleProof as Hex,
     plaintext,
     outerPayload: {
       v: 3,
