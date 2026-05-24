@@ -19,7 +19,8 @@
     "test:e2e:all": "tsx scripts/e2e-vault.ts --all",
     "forge:build": "forge build",
     "deploy:registry": "forge build && tsx scripts/deploy-handle-registry.ts",
-    "check:braga-gas": "tsx scripts/braga-gas-check.ts"
+    "check:braga-gas": "tsx scripts/braga-gas-check.ts",
+    "show:note": "tsx scripts/show-note-onchain.ts"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.6.8",
