@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useSwitchChain } from "wagmi";
+import { usePublicClient, useSwitchChain } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
 import { isAddress } from "viem";
-import { bragaChain } from "@/lib/chains";
+import { assertBragaFunded } from "@/lib/braga-preflight";
 import type { TokenTransactionView } from "@/lib/types";
 import {
   getArkivWalletClientForBraga,
@@ -19,6 +19,7 @@ export type ShareStep = "idle" | "nox" | "arkiv" | "done" | "error";
 
 export function useShareDisclosure() {
   const { switchChainAsync } = useSwitchChain();
+  const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
   const [step, setStep] = useState<ShareStep>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -41,16 +42,19 @@ export function useShareDisclosure() {
           chainId: arbitrumSepolia.id,
         });
         if (!ownerViem) throw new Error("Connect wallet on Arbitrum Sepolia");
+        if (!publicClient) throw new Error("Arbitrum Sepolia RPC unavailable");
         const handleClient = await getHandleClientForNox();
 
-        setStep("arkiv");
-        await switchChainAsync({ chainId: bragaChain.id });
         const ownerArkiv = await getArkivWalletClientForBraga();
+        const bragaOwner = ownerArkiv.account?.address;
+        if (!bragaOwner) throw new Error("Connect wallet on Arkiv Braga");
+        await assertBragaFunded(bragaOwner);
 
         const result = await shareTransactionWithAuditor(
           ownerViem,
           ownerArkiv,
           handleClient,
+          publicClient,
           tx,
           auditor,
           { auditorLabel: auditorLabel ?? "Third-party auditor" },
@@ -64,7 +68,7 @@ export function useShareDisclosure() {
         return false;
       }
     },
-    [switchChainAsync],
+    [publicClient, switchChainAsync],
   );
 
   const reset = useCallback(() => {

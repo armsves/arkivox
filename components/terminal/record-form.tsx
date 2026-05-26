@@ -193,18 +193,11 @@ export function RecordForm({
 
         {confidential ? (
           <>
-            <label className="flex cursor-pointer items-center gap-3">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                checked={onChainFirst}
-                onChange={(e) => setOnChainFirst(e.target.checked)}
-              />
-              <div className="h-5 w-5 border border-outline-variant bg-surface-container-lowest peer-checked:border-primary-container peer-checked:bg-primary-container" />
-              <span className="font-label-md text-on-surface-variant normal-case">
-                Run cToken confidentialTransfer on Sepolia first (wallet signs)
-              </span>
-            </label>
+            <p className="font-label-sm leading-relaxed text-on-surface-variant normal-case">
+              Runs <strong className="text-primary-container">confidentialTransfer</strong>{" "}
+              on Sepolia (Nox + cToken), then writes an encrypted row to Arkiv with the
+              Arbiscan tx hash visible in your ledger list.
+            </p>
 
             <label className="flex cursor-pointer items-center gap-3">
               <input

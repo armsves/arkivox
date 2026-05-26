@@ -13,19 +13,12 @@ import {
   getHandleClientForNox,
 } from "@/lib/wallet-clients";
 import {
-  prepareConfidentialTransaction,
-  publishConfidentialTransaction,
   recordTokenTransaction,
+  recordVerifiedConfidentialTransfer,
   type RecordTransactionInput,
 } from "@/lib/ledger-operations";
-import { confidentialTransferOnChain } from "@/lib/ctoken-onchain";
 import { formatArkivError } from "@/lib/arkiv-errors";
 import { assertBragaFunded } from "@/lib/braga-preflight";
-import {
-  arkivEncryptionKeyHandle,
-  commitArkivEncryptionKeyHandle,
-} from "@/lib/handle-registry";
-import { registerNoxDekHandleForOwner } from "@/lib/nox-handle-acl";
 
 export type RecordStep =
   | "idle"
@@ -72,8 +65,12 @@ export function useRecordTransaction() {
         };
 
         const confidential = isConfidentialTxType(input.txType);
-        const onChainFirst = options?.onChainFirst ?? true;
-        let prepared;
+        const arkivWallet = await getArkivWalletClientForBraga();
+        const owner = arkivWallet.account?.address;
+        if (!owner) throw new Error("Connect wallet on Arkiv Braga");
+        await assertBragaFunded(owner);
+
+        let entityKey: string;
 
         if (confidential) {
           await switchChainAsync({ chainId: arbitrumSepolia.id });
@@ -84,59 +81,25 @@ export function useRecordTransaction() {
           if (!publicClient) throw new Error("Arbitrum Sepolia RPC unavailable");
 
           const handle = await getHandleClientForNox();
+          const useExisting =
+            !options?.onChainFirst &&
+            params.existingAmountHandle &&
+            params.noxTxHash;
 
-          if (
-            onChainFirst &&
-            !params.existingAmountHandle &&
-            input.txType === "transfer"
-          ) {
-            setStep("sepolia");
-            const cToken = input.token === "cRLC" ? "cRLC" : "cUSDC";
-            const onChain = await confidentialTransferOnChain(
-              ownerViem,
-              publicClient,
-              handle,
-              cToken,
-              input.amount,
-              input.counterparty as `0x${string}`,
-            );
-            params.existingAmountHandle = onChain.amountHandle;
-            params.noxTxHash = onChain.txHash;
-          }
+          setStep(useExisting ? "nox" : "sepolia");
+          if (!useExisting) setStep("sepolia-registry");
 
-          setStep("nox");
-          prepared = await prepareConfidentialTransaction(handle, params);
-
-          setStep("sepolia-registry");
-          const dekHandle = arkivEncryptionKeyHandle(prepared.outerPayload);
-          await registerNoxDekHandleForOwner(
+          const result = await recordVerifiedConfidentialTransfer(
+            arkivWallet,
             ownerViem,
             publicClient,
-            ownerViem.account.address,
-            dekHandle,
-            prepared.dekHandleProof,
+            handle,
+            params,
           );
-          await commitArkivEncryptionKeyHandle(
-            ownerViem,
-            publicClient,
-            prepared.outerPayload,
-            "token_transaction",
-          );
-        }
-
-        setStep("arkiv");
-        await switchChainAsync({ chainId: bragaChain.id });
-        const arkivWallet = await getArkivWalletClientForBraga();
-        const owner = arkivWallet.account?.address;
-        if (!owner) throw new Error("Connect wallet on Arkiv Braga");
-        await assertBragaFunded(owner);
-
-        let entityKey: string;
-
-        if (prepared) {
-          const result = await publishConfidentialTransaction(arkivWallet, prepared);
           entityKey = result.entityKey;
         } else {
+          setStep("arkiv");
+          await switchChainAsync({ chainId: bragaChain.id });
           const result = await recordTokenTransaction(arkivWallet, params);
           entityKey = result.entityKey;
         }

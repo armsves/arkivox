@@ -57,6 +57,7 @@ function parseTransaction(entity: ArkivEntity): TokenTransactionView | null {
       created?: number;
       contentHash?: string;
       noxTxHash?: string | null;
+      sepoliaChainId?: number;
       wrap?: "dek" | "amount";
       memo?: string;
       public?: boolean;
@@ -99,6 +100,10 @@ function parseTransaction(entity: ArkivEntity): TokenTransactionView | null {
     }
 
     if (json.v === 3) {
+      const sepoliaTx =
+        typeof json.noxTxHash === "string" && json.noxTxHash.startsWith("0x")
+          ? json.noxTxHash
+          : null;
       return {
         entityKey: entity.key,
         txType: "transfer",
@@ -106,7 +111,7 @@ function parseTransaction(entity: ArkivEntity): TokenTransactionView | null {
         counterparty: "",
         owner: entity.owner ?? "",
         createdAt: blockTime(entity),
-        noxTxHash: null,
+        noxTxHash: sepoliaTx,
         contentHash: "",
         memo: "",
         payload: {
@@ -117,6 +122,8 @@ function parseTransaction(entity: ArkivEntity): TokenTransactionView | null {
           ciphertext: json.ciphertext ?? "",
           iv: json.iv ?? "",
           alg: json.alg ?? "AES-256-GCM",
+          noxTxHash: sepoliaTx,
+          sepoliaChainId: json.sepoliaChainId,
         },
         isPrivate: true,
       };

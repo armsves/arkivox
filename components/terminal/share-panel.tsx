@@ -21,7 +21,8 @@ export function SharePanel({
         Disclose to third party — {subjectLabel}
       </p>
       <p className="mt-1 font-label-sm text-on-surface-variant normal-case">
-        Nox addViewer + Arkiv auditor_disclosure (v3 encrypted)
+        Like the cToken demo: NoxCompute <code className="text-primary-container">addViewer</code> on
+        the transfer amount handle, plus an encrypted grant row on Arkiv for the auditor.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input

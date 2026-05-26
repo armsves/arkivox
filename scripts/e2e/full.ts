@@ -1,4 +1,5 @@
-import { isAddress, type Hex } from "viem";
+import { createPublicClient, http, isAddress, type Hex } from "viem";
+import { arbitrumSepolia } from "viem/chains";
 import {
   createArkivWalletFromPrivateKey,
   createHandleClient,
@@ -41,6 +42,10 @@ export async function runFull(ownerKey: Hex, granteeKey: Hex) {
   const ownerArkiv = createArkivWalletFromPrivateKey(ownerKey);
   const ownerHandle = await createHandleClient(ownerViem);
   const granteeHandle = await createHandleClient(granteeViem);
+  const arbPublic = createPublicClient({
+    chain: arbitrumSepolia,
+    transport: http(),
+  });
   const granteeAddr = granteeViem.account!.address as `0x${string}`;
   const ownerAddr = ownerArkiv.account!.address as `0x${string}`;
 
@@ -83,6 +88,7 @@ export async function runFull(ownerKey: Hex, granteeKey: Hex) {
     ownerViem,
     ownerArkiv,
     ownerHandle,
+    arbPublic,
     transaction,
     granteeAddr,
     { auditorLabel: "E2E grantee", amount: E2E.amount },

@@ -3,6 +3,7 @@
 import type { AuditorDisclosureView, TokenTransactionView } from "@/lib/types";
 import type { DecryptedTransaction } from "@/lib/types";
 import { isConfidentialTxType, type TxType } from "@/lib/arkiv";
+import { ARBITRUM_SEPOLIA_EXPLORER } from "@/lib/nox";
 import { BragaOnChainHover, transactionOnChainPanel } from "./braga-on-chain-hover";
 import { PrivacyBadge } from "./privacy-badge";
 
@@ -75,19 +76,37 @@ export function LedgerCard({
             TOKEN:{" "}
             <span className="text-on-surface">{show ? show.token : "••••"}</span>
           </div>
-          <div className="mt-1 font-label-sm text-on-surface-variant normal-case">
-            Braga{" "}
-            <BragaOnChainHover
-              panel={transactionOnChainPanel(tx)}
-              label="Braga on-chain info"
-            >
-              {truncateKey(tx.entityKey)}
-            </BragaOnChainHover>
-            {show && (
-              <>
-                {" "}
-                · CP {truncate(show.counterparty)}
-              </>
+          <div className="mt-1 space-y-1 font-label-sm text-on-surface-variant normal-case">
+            <div>
+              Braga{" "}
+              <BragaOnChainHover
+                panel={transactionOnChainPanel(tx)}
+                label="Braga on-chain info"
+              >
+                {truncateKey(tx.entityKey)}
+              </BragaOnChainHover>
+              {show && (
+                <>
+                  {" "}
+                  · CP {truncate(show.counterparty)}
+                </>
+              )}
+            </div>
+            {tx.noxTxHash ? (
+              <a
+                href={`${ARBITRUM_SEPOLIA_EXPLORER}/tx/${tx.noxTxHash}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary-container hover:underline"
+              >
+                Verify cToken transfer on Sepolia ↗
+              </a>
+            ) : (
+              tx.isPrivate && (
+                <span className="text-on-surface-variant/80">
+                  No Sepolia anchor — re-record with on-chain transfer
+                </span>
+              )
             )}
           </div>
         </div>
@@ -126,7 +145,7 @@ export function LedgerCard({
             onClick={onReveal}
             className="active-scale w-full border border-primary-container py-2 font-label-md text-primary-container transition-all hover:bg-primary-container/10 disabled:opacity-50"
           >
-            {busyReveal ? "…" : "Reveal"}
+            {busyReveal ? "…" : "Reveal (Nox)"}
           </button>
         )}
         {canShare && (
@@ -135,7 +154,7 @@ export function LedgerCard({
             onClick={onShare}
             className="active-scale w-full border border-outline py-2 font-label-md text-on-surface transition-all hover:bg-surface-variant"
           >
-            Share
+            Share access
           </button>
         )}
       </div>

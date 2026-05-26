@@ -362,8 +362,9 @@ export function LedgerApp() {
               <div>
                 <h2 className="font-headline-lg text-primary-container">My Ledger</h2>
                 <p className="mt-2 font-body-md text-on-surface-variant">
-                  Cryptographically secured transaction records. Reveal to decrypt AES
-                  payload via Nox.
+                  Each transfer is listed on Arkiv with a Nox-wrapped DEK (AES metadata) and
+                  the cToken amount handle from Sepolia. Reveal decrypts via Nox; Share
+                  grants selective disclosure like the cToken demo.
                 </p>
               </div>
 

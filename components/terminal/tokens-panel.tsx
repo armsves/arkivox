@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAccount } from "wagmi";
 import { isAddress } from "viem";
 import { useCTokenActions } from "@/hooks/use-ctoken-actions";
+import { useRecordVerifiedTransfer } from "@/hooks/use-record-verified-transfer";
 import { getHandleRegistryAddress } from "@/lib/handle-registry";
 import { CTOKEN_CONTRACTS } from "@/lib/ctoken-contracts";
 import { ARBITRUM_SEPOLIA_EXPLORER, NOX_COMPUTE_ADDRESS } from "@/lib/nox";
@@ -33,8 +34,18 @@ export function TokensPanel() {
   const [recipient, setRecipient] = useState("");
   const [unwrapAmount, setUnwrapAmount] = useState("");
   const [unwrapTo, setUnwrapTo] = useState("");
+  const [transferMemo, setTransferMemo] = useState("");
+  const [addToLedger, setAddToLedger] = useState(true);
 
-  const busy = step !== "idle" && step !== "done" && step !== "error" && step !== "finalize";
+  const {
+    appendToLedger,
+    busy: ledgerBusy,
+    error: ledgerError,
+  } = useRecordVerifiedTransfer();
+
+  const busy =
+    ledgerBusy ||
+    (step !== "idle" && step !== "done" && step !== "error" && step !== "finalize");
   const registry = getHandleRegistryAddress();
 
   return (
@@ -129,9 +140,10 @@ export function TokensPanel() {
       <section className="space-y-4 border border-outline-variant p-4">
         <h3 className="font-headline-md text-on-surface">Confidential transfer</h3>
         <p className="font-label-sm text-on-surface-variant normal-case">
-          Encrypts amount via Nox, then calls{" "}
-          <code className="text-primary-container">confidentialTransfer</code> on the cToken
-          contract. The handle is stored on-chain in contract state.
+          Nox encrypts the amount, then{" "}
+          <code className="text-primary-container">confidentialTransfer</code> runs on the
+          cToken contract. Enable the ledger option to list the transfer on Arkiv with a
+          Sepolia verification link.
         </p>
         <div className="grid grid-cols-2 gap-2">
           {(["cUSDC", "cRLC"] as const).map((t) => (
@@ -161,10 +173,40 @@ export function TokensPanel() {
           value={transferAmount}
           onChange={(e) => setTransferAmount(e.target.value)}
         />
+        <input
+          className="terminal-input w-full"
+          placeholder="Ledger memo (optional)"
+          value={transferMemo}
+          onChange={(e) => setTransferMemo(e.target.value)}
+        />
+        <label className="flex cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            className="peer sr-only"
+            checked={addToLedger}
+            onChange={(e) => setAddToLedger(e.target.checked)}
+          />
+          <div className="h-5 w-5 border border-outline-variant bg-surface-container-lowest peer-checked:border-primary-container peer-checked:bg-primary-container" />
+          <span className="font-label-md text-on-surface-variant normal-case">
+            Add to encrypted ledger on Arkiv (Sepolia tx anchor)
+          </span>
+        </label>
         <button
           type="button"
           disabled={busy || !transferAmount || !isAddress(recipient || "0x")}
-          onClick={() => void transfer(ctoken, transferAmount, recipient)}
+          onClick={async () => {
+            const result = await transfer(ctoken, transferAmount, recipient);
+            if (result && addToLedger) {
+              await appendToLedger({
+                token: ctoken,
+                amount: transferAmount,
+                counterparty: recipient as `0x${string}`,
+                memo: transferMemo || undefined,
+                noxTxHash: result.txHash,
+                amountHandle: result.amountHandle,
+              });
+            }
+          }}
           className="w-full bg-primary-container py-3 font-label-md text-on-primary disabled:opacity-50"
         >
           {step === "encrypting"
@@ -238,7 +280,9 @@ export function TokensPanel() {
         </p>
       )}
 
-      {error && <p className="font-label-md text-error normal-case">{error}</p>}
+      {(error || ledgerError) && (
+        <p className="font-label-md text-error normal-case">{error ?? ledgerError}</p>
+      )}
     </div>
   );
 }

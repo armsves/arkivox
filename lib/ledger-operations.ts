@@ -18,6 +18,7 @@ import {
   type Account,
   type Chain,
   type Hex,
+  type PublicClient,
   type WalletClient,
 } from "viem";
 import { arbitrumSepolia } from "viem/chains";
@@ -33,12 +34,19 @@ import { createEntityResilient } from "@/lib/arkiv-create-entity";
 import { formatAmountForToken, parseAmountForToken } from "@/lib/amount";
 import { PUBLIC_TX_AMOUNT_HANDLE } from "@/lib/ctoken-contracts";
 import {
+  confidentialTransferOnChain,
+  getConfidentialToken,
+} from "@/lib/ctoken-onchain";
+import {
   dekToUint256,
   generateDek,
   sha256Hex,
   uint256ToDek,
 } from "@/lib/crypto";
-import { arkivEncryptionKeyHandle } from "@/lib/handle-registry";
+import {
+  arkivEncryptionKeyHandle,
+  commitArkivEncryptionKeyHandle,
+} from "@/lib/handle-registry";
 import { NOX_COMPUTE_ADDRESS, TEE_COOLDOWN_MS } from "@/lib/nox";
 import {
   noxApplicationContractForDek,
@@ -164,6 +172,8 @@ export type PreparedConfidentialTransaction = {
     ciphertext: string;
     iv: string;
     alg: "AES-256-GCM";
+    noxTxHash: `0x${string}` | null;
+    sepoliaChainId: number;
   };
 };
 
@@ -205,6 +215,11 @@ export async function prepareConfidentialTransaction(
     dekHandle = encryptionKeyHandle;
     wrap = "amount";
   } else {
+    if (input.txType === "transfer") {
+      throw new Error(
+        "Confidential transfers must include a Sepolia cToken confidentialTransfer (amount handle + tx hash)",
+      );
+    }
     amountHandle = encryptionKeyHandle;
     wrap = "dek";
   }
@@ -221,6 +236,8 @@ export async function prepareConfidentialTransaction(
       ciphertext,
       iv,
       alg: "AES-256-GCM",
+      noxTxHash: input.noxTxHash ?? null,
+      sepoliaChainId: arbitrumSepolia.id,
     },
   };
 }
@@ -256,7 +273,7 @@ export async function publishConfidentialTransaction(
     counterparty: plaintext.counterparty,
     owner: ownerAddress,
     createdAt: plaintext.created,
-    noxTxHash: plaintext.noxTxHash,
+    noxTxHash: outerPayload.noxTxHash ?? plaintext.noxTxHash,
     contentHash,
     memo: plaintext.memo,
     payload: {
@@ -267,6 +284,8 @@ export async function publishConfidentialTransaction(
       ciphertext: outerPayload.ciphertext,
       iv: outerPayload.iv,
       alg: "AES-256-GCM",
+      noxTxHash: outerPayload.noxTxHash,
+      sepoliaChainId: outerPayload.sepoliaChainId,
     },
     isPrivate: true,
   };
@@ -342,20 +361,90 @@ export async function recordTokenTransaction(
     throw new Error("Arbitrum Sepolia wallet required for confidential transfers");
   }
 
-  const prepared = await prepareConfidentialTransaction(nox.handle, input);
-  const dekHandle = arkivEncryptionKeyHandle(prepared.outerPayload);
   const arbPublic = createPublicClient({
     chain: arbitrumSepolia,
     transport: viemHttp(),
   });
-  await registerNoxDekHandleForOwner(
+
+  const { transaction } = await recordVerifiedConfidentialTransfer(
+    ownerArkiv,
     nox.viem,
     arbPublic,
-    ownerAddress,
+    nox.handle,
+    input,
+  );
+  return { entityKey: transaction.entityKey, transaction };
+}
+
+/** cToken confidentialTransfer on Sepolia → Nox-encrypted Arkiv ledger row with public tx anchor. */
+export async function recordVerifiedConfidentialTransfer(
+  ownerArkiv: ArkivWalletClient,
+  ownerViem: WalletClient,
+  publicClient: PublicClient,
+  ownerHandle: HandleClient,
+  input: RecordTransactionInput,
+): Promise<{
+  entityKey: string;
+  noxTxHash: `0x${string}`;
+  amountHandle: `0x${string}`;
+  transaction: TokenTransactionView;
+}> {
+  if (input.txType !== "transfer") {
+    throw new Error("Verified flow applies to confidential transfer only");
+  }
+
+  const account = ownerViem.account;
+  if (!account) throw new Error("Wallet not connected");
+
+  let amountHandle = input.existingAmountHandle;
+  let noxTxHash = input.noxTxHash;
+
+  if (!amountHandle || !noxTxHash) {
+    const cToken = input.token === "cRLC" ? "cRLC" : "cUSDC";
+    const onChain = await confidentialTransferOnChain(
+      ownerViem,
+      publicClient,
+      ownerHandle,
+      cToken,
+      input.amount,
+      input.counterparty,
+    );
+    amountHandle = onChain.amountHandle;
+    noxTxHash = onChain.txHash;
+  }
+
+  const prepared = await prepareConfidentialTransaction(ownerHandle, {
+    ...input,
+    existingAmountHandle: amountHandle,
+    noxTxHash,
+  });
+
+  const dekHandle = arkivEncryptionKeyHandle(prepared.outerPayload);
+  await registerNoxDekHandleForOwner(
+    ownerViem,
+    publicClient,
+    account.address,
     dekHandle,
     prepared.dekHandleProof,
   );
-  return publishConfidentialTransaction(ownerArkiv, prepared);
+  await commitArkivEncryptionKeyHandle(
+    ownerViem,
+    publicClient,
+    prepared.outerPayload,
+    "token_transaction",
+  );
+
+  const { entityKey, transaction } = await publishConfidentialTransaction(
+    ownerArkiv,
+    prepared,
+  );
+
+  return {
+    entityKey,
+    noxTxHash: noxTxHash as `0x${string}`,
+    amountHandle: amountHandle as `0x${string}`,
+    transaction,
+  };
 }
 
 async function ensureViewer(
@@ -395,7 +484,21 @@ export async function decryptTransactionSecret(
       tx.payload.iv,
       dek,
     );
-    return plaintextToDecrypted(parsed);
+    const result = plaintextToDecrypted(parsed);
+
+    // cToken demo path: amount lives on the transfer amount handle (wrap=amount).
+    if (tx.payload.wrap === "amount" && tx.payload.dekHandle) {
+      try {
+        const { value } = await handleClient.decrypt(tx.payload.amountHandle);
+        const raw =
+          typeof value === "bigint" ? value : BigInt(value as string | number);
+        result.amount = formatAmountForToken(raw, parsed.token);
+        result.amountRaw = raw.toString();
+      } catch {
+        /* fall back to AES plaintext amount */
+      }
+    }
+    return result;
   }
 
   if (tx.payload.ciphertext && tx.payload.iv) {
@@ -473,6 +576,7 @@ export async function createAuditorDisclosure(
   ownerViem: WalletClient,
   ownerArkiv: ArkivWalletClient,
   ownerHandle: HandleClient,
+  publicClient: PublicClient,
   tx: TokenTransactionView,
   auditor: `0x${string}`,
   auditorLabel = "Auditor",
@@ -505,13 +609,22 @@ export async function createAuditorDisclosure(
     counterparty,
   };
   const { ciphertext, iv } = await encryptJson(plaintext, disclosureDek);
-  const { handle: dekHandle } = await ownerHandle.encryptInput(
+  const { handle: dekHandle, handleProof } = await ownerHandle.encryptInput(
     dekToUint256(disclosureDek),
     "uint256",
-    NOX_COMPUTE_ADDRESS,
+    noxApplicationContractForDek(),
   );
 
   const disclosureHandle = dekHandle as `0x${string}`;
+  const account = ownerViem.account;
+  if (!account) throw new Error("Wallet not connected");
+  await registerNoxDekHandleForOwner(
+    ownerViem,
+    publicClient,
+    account.address,
+    disclosureHandle,
+    handleProof as Hex,
+  );
 
   const { entityKey } = await createEntityResilient(ownerArkiv, {
     payload: jsonToPayload({
@@ -546,6 +659,7 @@ export async function shareTransactionWithAuditor(
   ownerViem: WalletClient,
   ownerArkiv: ArkivWalletClient,
   ownerHandle: HandleClient,
+  publicClient: PublicClient,
   tx: TokenTransactionView,
   auditor: `0x${string}`,
   options?: {
@@ -559,7 +673,9 @@ export async function shareTransactionWithAuditor(
     );
   }
 
-  let shareHandle = tx.payload.amountHandle;
+  const ctokenAmountHandle =
+    tx.payload.wrap === "amount" ? tx.payload.amountHandle : null;
+  let shareHandle = ctokenAmountHandle ?? tx.payload.amountHandle;
   let txPlain: TransactionPlaintext | undefined;
 
   if (tx.payload.ciphertext && tx.payload.iv) {
@@ -570,14 +686,20 @@ export async function shareTransactionWithAuditor(
       tx.payload.iv,
       dek,
     );
-    const amount = options?.amount ?? txPlain.amount;
-    const amountRaw = parseAmountForToken(amount, txPlain.token);
-    const { handle } = await ownerHandle.encryptInput(
-      amountRaw,
-      "uint256",
-      NOX_COMPUTE_ADDRESS,
-    );
-    shareHandle = handle as `0x${string}`;
+
+    if (!ctokenAmountHandle) {
+      const amount = options?.amount ?? txPlain.amount;
+      const amountRaw = parseAmountForToken(amount, txPlain.token);
+      const token = getConfidentialToken(
+        txPlain.token.startsWith("c") ? txPlain.token : `c${txPlain.token}`,
+      );
+      const { handle } = await ownerHandle.encryptInput(
+        amountRaw,
+        "uint256",
+        token.confidentialAddress!,
+      );
+      shareHandle = handle as `0x${string}`;
+    }
   } else if (!tx.isPrivate) {
     txPlain = {
       txType: tx.txType,
@@ -604,6 +726,7 @@ export async function shareTransactionWithAuditor(
       ownerViem,
       ownerArkiv,
       ownerHandle,
+      publicClient,
       tx,
       auditor,
       options?.auditorLabel ?? "Auditor",

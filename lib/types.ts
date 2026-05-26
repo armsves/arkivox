@@ -10,6 +10,10 @@ export interface TransactionSecretPayload {
   wrap?: "dek" | "amount";
   /** When wrap=amount: Nox DEK handle for Arkiv ciphertext (committed on HandleRegistry) */
   dekHandle?: `0x${string}`;
+  /** Public anchor — Sepolia cToken / Nox tx (verifiable without Reveal) */
+  noxTxHash?: string | null;
+  /** Chain id where noxTxHash was mined (Arbitrum Sepolia) */
+  sepoliaChainId?: number;
   /** Public wrap/unwrap reference — no Nox encryption */
   public?: boolean;
   amount?: string;
